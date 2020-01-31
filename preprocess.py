@@ -3,13 +3,14 @@ import glob
 import numpy as np
 from tqdm import tqdm
 
-from utils.AIR import read_joint
+from utils.AIR import read_joint, vectorize, move_camera_to_front
 
 
-joint_path = './joint files/'
-data_path = './data files/'
+JOINT_PATH = './joint files/'
+DATA_PATH = './data files/'
+MAX_DISTANCE = 5.  # maximum distance between camera and human
 
-human_files = glob.glob(os.path.normpath(os.path.join(joint_path, "C001*.joint")))
+human_files = glob.glob(os.path.normpath(os.path.join(JOINT_PATH, "C001*.joint")))
 human_files.sort()
 n_data = len(human_files)
 
@@ -22,9 +23,43 @@ for human_file in human_files:
     robot_info = read_joint(robot_file)
     third_info = read_joint(third_file)
 
+    extracted_human_info = list()
+    extracted_robot_info = list()
+    extracted_third_info = list()
+
+    # extract distance features first
+    n_frames = min(len(human_info), len(robot_info), len(third_info))
+    for f in range(n_frames):
+        n_body = sum(1 for b in third_info[f] if b is not None)
+        if n_body != 2:
+            print(f'third camera information is wrong. {third_file}')
+            continue
+
+        robot_pos1 = vectorize(third_info[f][0]["joints"][0])
+        human_pos1 = vectorize(third_info[f][1]["joints"][0])
+        dist_third = MAX_DISTANCE if all(v == 0 for v in human_pos1) else np.linalg.norm(human_pos1 - robot_pos1)
+
+        human_pos2 = vectorize(human_info[f][1]["joints"][0])
+        robot_pos2 = np.array([0., 0., 0.])
+        dist_human = MAX_DISTANCE if all(v == 0 for v in human_pos2) else np.linalg.norm(human_pos2 - robot_pos2)
+
+        dist = min(dist_third, dist_human)
+        extracted_third_info.append([dist / MAX_DISTANCE])
+
+    # move camera position in front of person
+    move_camera_to_front(human_info, body_id=1)
+    move_camera_to_front(robot_info, body_id=0)
+
+    for f in range(n_frames):
+        extracted_human_info.append(human_info[f][1]["joints"])
+        extracted_robot_info.append(robot_info[f][0]["joints"])
+
     data_name = human_file.replace("\\", "/").split("/")[-1].split('.')[0]
-    data_file = data_path + f"{data_name[4:]}.npz"
-    np.savez(data_file, human_info=human_info, robot_info=robot_info, third_info=third_info)
+    data_file = DATA_PATH + f"{data_name[4:]}.npz"
+    np.savez(data_file,
+             human_info=extracted_human_info,
+             robot_info=extracted_robot_info,
+             third_info=extracted_third_info)
 
     pbar.update(1)
 
