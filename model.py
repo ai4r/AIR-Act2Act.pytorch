@@ -6,48 +6,27 @@
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # 수정해야할 코드
 class Act2Act(nn.Module):
-    def __init__(self):
+    def __init__(self, input_size, hidden_size, output_size):
         super(Act2Act, self).__init__()
-        pass
 
-    def forward(self):
-        pass
+        self.hidden_size = hidden_size
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
 
+    def forward(self, inputs):
+        hidden, cell = self.init_hidden(inputs.size(0))
+        output, (hidden, cell) = self.lstm(inputs, (hidden, cell))
 
-# 아래는 샘플 코드
-class LSTMTagger(nn.Module):
+        hidden = hidden[-1:]
+        hidden = torch.cat([h for h in hidden], 1)
+        output = self.fc(hidden)
 
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, tagset_size):
-        super(LSTMTagger, self).__init__()
-        self.hidden_dim = hidden_dim
+        return output
 
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
-
-        # The LSTM takes word embeddings as inputs, and outputs hidden states
-        # with dimensionality hidden_dim.
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim)
-
-        # The linear layer that maps from hidden state space to tag space
-        self.hidden2tag = nn.Linear(hidden_dim, tagset_size)
-        self.hidden = self.init_hidden()
-
-    def init_hidden(self):
-        # Before we've done anything, we dont have any hidden state.
-        # Refer to the Pytorch documentation to see exactly
-        # why they have this dimensionality.
-        # The axes semantics are (num_layers, minibatch_size, hidden_dim)
-        return (autograd.Variable(torch.zeros(1, 1, self.hidden_dim)),
-                autograd.Variable(torch.zeros(1, 1, self.hidden_dim)))
-
-    def forward(self, sentence):
-        embeds = self.word_embeddings(sentence)
-        lstm_out, self.hidden = self.lstm(
-            embeds.view(len(sentence), 1, -1), self.hidden)
-        tag_space = self.hidden2tag(lstm_out.view(len(sentence), -1))
-        tag_scores = F.log_softmax(tag_space, dim=1)
-        return tag_scores
+    def init_hidden(self, batch_size):
+        hidden = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
+        cell = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
+        return hidden, cell

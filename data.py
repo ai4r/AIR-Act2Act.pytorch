@@ -51,7 +51,8 @@ class AIRDataSet(data.Dataset):
                 self.inputs.append(np.concatenate((third_seq, human_seq), axis=1))
                 action_name = [action for action in ACTIONS if action in self.file_names[idx]][0]
                 cur_action = ACTIONS.index(action_name)
-                self.outputs.append(np.eye(len(ACTIONS))[cur_action])
+                self.outputs.append(cur_action)
+                # self.outputs.append(np.eye(len(ACTIONS))[cur_action])
 
             # sampled_robot_seq = self.robot_data[idx][::step]  # 나중에 사용할 예정
 
@@ -66,7 +67,7 @@ class AIRDataSet(data.Dataset):
         return len(self.inputs)
 
     def __getitem__(self, item):
-        return self.inputs[item], self.outputs[item]
+        return self.inputs[item].astype("float32"), self.outputs[item]
 
     def add_random_noise(self):
         pass
@@ -75,12 +76,12 @@ class AIRDataSet(data.Dataset):
         pass
 
 
-# 아래는 사용 예시
-my_dataset = AIRDataSet(data_path='./data files',
-                        dim_input=(30, 10),
-                        dim_output=(1, 1))
-batch_size = 1
-data_loader = data.DataLoader(my_dataset, batch_size=batch_size, shuffle=False)
-
-for inputs, outputs in data_loader:
-    print(outputs)
+# # 아래는 사용 예시
+# my_dataset = AIRDataSet(data_path='./data files',
+#                         dim_input=(30, 10),
+#                         dim_output=(1, 1))
+# batch_size = 1
+# data_loader = data.DataLoader(my_dataset, batch_size=batch_size, shuffle=False)
+#
+# for inputs, outputs in data_loader:
+#     print(outputs)
