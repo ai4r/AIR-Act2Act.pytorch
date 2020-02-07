@@ -33,6 +33,7 @@ def main():
     # training
     for epoch in range(num_epochs):
         total_loss = 0.0
+        total_acc = 0.0
         for inputs, outputs in data_loader:
             model.zero_grad()
 
@@ -40,6 +41,10 @@ def main():
             outputs = outputs.to(device)
 
             scores = model(inputs)
+            predictions = torch.argmax(scores, dim=1)
+            acc = (predictions == outputs).float().mean()
+            total_acc += acc.item()
+
             loss = loss_function(scores, outputs)
             total_loss += loss.item()
 
@@ -48,7 +53,7 @@ def main():
 
         # average loss
         if epoch % 10 == 0:
-            print("Epoch ", epoch, "Loss: ", total_loss / len(data_loader))
+            print(f"Epoch {epoch}, Loss: {total_loss / len(data_loader):.5f}, Acc: {total_acc / len(data_loader):.5f}")
 
 
 if __name__ == "__main__":
