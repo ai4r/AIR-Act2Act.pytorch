@@ -17,59 +17,59 @@ def read_joint(path):
 
 
 def vectorize(joint):
-    return np.array([joint['x'], joint['y'], joint['z']])
+    return np.array([joint['x'], joint['y'], joint['z']]).astype('float32')
 
 
 def move_camera_to_front(body_info, body_id):
     for f in range(len(body_info)):
+        if body_info[f][body_id] is None:
+            continue
+
         # joints of the trunk
         reference_body = body_info[f][body_id]["joints"]
-        r_16_kinect = vectorize(reference_body[16])
-        r_12_kinect = vectorize(reference_body[12])
-        r_20_kinect = vectorize(reference_body[20])
-        r_0_kinect = vectorize(reference_body[0])
-        dist_to_camera = np.linalg.norm(r_0_kinect)
+        r_4_kinect = vectorize(reference_body[4])  # shoulderLeft
+        r_8_kinect = vectorize(reference_body[8])  # shoulderRight
+        r_20_kinect = (r_4_kinect + r_8_kinect) / 2  # spineShoulder
+        r_0_kinect = vectorize(reference_body[0])  # torso
+        dist_to_camera = np.linalg.norm(r_20_kinect)
 
         # find the front direction vector
-        front_vector = np.cross(r_16_kinect - r_12_kinect, r_16_kinect - r_20_kinect)
+        front_vector = np.cross(r_8_kinect - r_4_kinect, r_0_kinect - r_4_kinect)
         norm = np.linalg.norm(front_vector, axis=0, ord=2)
         norm = np.finfo(front_vector.dtype).eps if norm == 0 else norm
         normalized_front_vector = front_vector / norm * dist_to_camera
-        cam_pos = r_0_kinect + normalized_front_vector
+        cam_pos = r_20_kinect + normalized_front_vector  # to
         cam_dir = -normalized_front_vector
-        if all(x != 0 for x in cam_dir):
+        if any(x != 0 for x in cam_dir):
             start_frame = f
             break
 
+    # rotation factors
+    eye = cam_pos
+    at = cam_dir
+    up = r_20_kinect - r_0_kinect
+
+    norm_at = np.linalg.norm(at, axis=0, ord=2)
+    norm_up = np.linalg.norm(up, axis=0, ord=2)
+    norm_at = np.finfo(at.dtype).eps if norm_at == 0 else norm_at
+    norm_up = np.finfo(up.dtype).eps if norm_up == 0 else norm_up
+    z_c = at / norm_at
+    y_c = up / norm_up
+    x_c = np.cross(y_c, z_c)
+
     for f in range(start_frame, len(body_info)):
         body = body_info[f][body_id]["joints"]
-
-        # rotation factors
-        dist = np.linalg.norm(cam_dir)
-        dist_y = np.linalg.norm(np.array([cam_dir[0], cam_dir[2]]))
-        cos_x = dist_y / dist
-        sin_x = -cam_dir[1] / dist
-        cos_y = cam_dir[2] / dist_y
-        sin_y = cam_dir[0] / dist_y
-
         # for all the 25 joints within each skeleton
         for j in range(len(body)):
             joint = body[j]
 
-            # 1. translation to the position of robot
-            trans_x = joint['x'] - cam_pos[0]
-            trans_y = joint['y'] - cam_pos[1]
-            trans_z = joint['z'] - cam_pos[2]
+            x = joint['x'] * x_c[0] + joint['y'] * x_c[1] + joint['z'] * x_c[2] - np.dot(eye, x_c)
+            y = joint['x'] * y_c[0] + joint['y'] * y_c[1] + joint['z'] * y_c[2] - np.dot(eye, y_c)
+            z = joint['x'] * z_c[0] + joint['y'] * z_c[1] + joint['z'] * z_c[2] - np.dot(eye, z_c)
 
-            # 2. rotation about x-axis
-            rot_x = trans_x
-            rot_y = sin_x * trans_z + cos_x * trans_y
-            rot_z = cos_x * trans_z - sin_x * trans_y
-
-            # 3. rotation about y-axis
-            joint['x'] = cos_y * rot_x - sin_y * rot_z
-            joint['y'] = rot_y
-            joint['z'] = sin_y * rot_x + cos_y * rot_z
+            joint['x'] = x
+            joint['y'] = y
+            joint['z'] = z
 
     return body_info
 
@@ -108,4 +108,8 @@ def get_upper_body_joints(body):
 
 
 def norm_to_distance(origin, basis, joint):
-    return (joint - origin) / np.linalg.norm(basis - origin) if any(joint) else joint
+    norm = np.linalg.norm(basis - origin)
+    norm = np.finfo(basis.dtype).eps if norm == 0 else norm
+    result = (joint - origin) / norm if any(joint) else joint
+    return result
+
