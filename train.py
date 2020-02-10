@@ -15,7 +15,7 @@ def main():
     hidden_size = 1024
     output_dim = len(ACTIONS)
     learning_rate = 0.01
-    num_epochs = 1000
+    num_epochs = 3000
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # define LSTM model
@@ -31,7 +31,7 @@ def main():
     data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
     # training
-    for epoch in range(num_epochs):
+    for epoch in range(1, num_epochs + 1):
         total_loss = 0.0
         total_acc = 0.0
         for inputs, outputs in data_loader:
@@ -52,8 +52,10 @@ def main():
             optimizer.step()
 
         # average loss
-        if epoch % 10 == 0:
+        if epoch % 100 == 0:
             print(f"Epoch {epoch}, Loss: {total_loss / len(data_loader):.5f}, Acc: {total_acc / len(data_loader):.5f}")
+            model_path = f'./models/model_{epoch:04d}.pth'
+            torch.save(model.state_dict(), model_path)
 
 
 if __name__ == "__main__":
