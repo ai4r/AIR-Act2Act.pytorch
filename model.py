@@ -7,7 +7,7 @@ import torch
 import torch.autograd as autograd
 import torch.nn as nn
 
-# 수정해야할 코드
+
 class Act2Act(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(Act2Act, self).__init__()
