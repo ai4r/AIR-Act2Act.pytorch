@@ -16,6 +16,11 @@ ACTIONS = ["A%03d" % a for a in range(1, 11)]
 # ACTIONS = ['A001', 'A005']
 
 
+def gen_sequence(data, length):
+    for start_idx in range(len(data) - length):
+        yield list(data[start_idx:start_idx + length])
+
+
 class AIRDataSet(data.Dataset):
     def __init__(self, data_path, dim_input, dim_output, b_add_noise=False, b_connect_sequence=False):
         # load data from files
@@ -50,8 +55,8 @@ class AIRDataSet(data.Dataset):
 
             sampled_human_seq = self.human_data[idx][::step]
             sampled_third_seq = self.third_data[idx][::step]
-            for human_seq, third_seq in zip(self.gen_sequence(sampled_human_seq, seq_length),
-                                            self.gen_sequence(sampled_third_seq, seq_length)):
+            for human_seq, third_seq in zip(gen_sequence(sampled_human_seq, seq_length),
+                                            gen_sequence(sampled_third_seq, seq_length)):
                 self.inputs.append(np.concatenate((third_seq, human_seq), axis=1))
                 action_name = [action for action in ACTIONS if action in self.file_names[idx]][0]
                 cur_action = ACTIONS.index(action_name)
@@ -60,11 +65,6 @@ class AIRDataSet(data.Dataset):
             # sampled_robot_seq = self.robot_data[idx][::step]  # 나중에 사용할 예정
         # self.inputs = np.round(self.inputs, 3)
         print('Training data extracted.')
-
-    @staticmethod
-    def gen_sequence(data, length):
-        for start_idx in range(len(data) - length):
-            yield list(data[start_idx:start_idx + length])
 
     def __len__(self):
         return len(self.inputs)
