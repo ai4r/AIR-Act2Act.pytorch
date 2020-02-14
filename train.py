@@ -15,7 +15,8 @@ def main():
     hidden_size = 1024
     output_dim = len(ACTIONS)
     learning_rate = 0.01
-    num_epochs = 3000
+    num_epochs = 200
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # define LSTM model
@@ -25,35 +26,59 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     # load data set
-    dataset = AIRDataSet(data_path='./data files',
-                         dim_input=(lstm_input_length, lstm_input_size),
-                         dim_output=(output_dim, 1))
-    data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    train_dataset = AIRDataSet(data_path='./data files/train data',
+                               dim_input=(lstm_input_length, lstm_input_size),
+                               dim_output=(output_dim, 1))
+    valid_dataset = AIRDataSet(data_path='./data files/valid data',
+                               dim_input=(lstm_input_length, lstm_input_size),
+                               dim_output=(output_dim, 1))
+    train_data_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    valid_data_loader = data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
     # training
     for epoch in range(1, num_epochs + 1):
-        total_loss = 0.0
-        total_acc = 0.0
-        for inputs, outputs in data_loader:
+        train_loss = 0.0
+        train_acc = 0.0
+        for train_inputs, train_outputs in train_data_loader:
             model.zero_grad()
 
-            inputs = inputs.to(device)
-            outputs = outputs.to(device)
+            train_inputs = train_inputs.to(device)
+            train_outputs = train_outputs.to(device)
 
-            scores = model(inputs)
-            predictions = torch.argmax(scores, dim=1)
-            acc = (predictions == outputs).float().mean()
-            total_acc += acc.item()
+            train_scores = model(train_inputs)
+            train_predictions = torch.argmax(train_scores, dim=1)
+            acc = (train_predictions == train_outputs).float().mean()
+            train_acc += acc.item()
 
-            loss = loss_function(scores, outputs)
-            total_loss += loss.item()
+            loss = loss_function(train_scores, train_outputs)
+            train_loss += loss.item()
 
             loss.backward()
             optimizer.step()
 
-        # average loss
-        if epoch % 100 == 0:
-            print(f"Epoch {epoch}, Loss: {total_loss / len(data_loader):.5f}, Acc: {total_acc / len(data_loader):.5f}")
+        # validation
+        if epoch % 10 == 0:
+            valid_loss = 0.0
+            valid_acc = 0.0
+            with torch.no_grad():
+                for valid_inputs, valid_outputs in valid_data_loader:
+                    valid_inputs = valid_inputs.to(device)
+                    valid_outputs = valid_outputs.to(device)
+
+                    valid_scores = model(valid_inputs)
+                    valid_predictions = torch.argmax(valid_scores, dim=1)
+                    acc = (valid_predictions == valid_outputs).float().mean()
+                    valid_acc += acc.item()
+
+                    loss = loss_function(valid_scores, valid_outputs)
+                    valid_loss += loss.item()
+
+            # Print average training/validation loss and accuracy
+            print(f"Epoch {epoch}")
+            print(f"Training Loss: {train_loss / len(train_data_loader):.5f}, "
+                  f"Training Acc: {train_acc / len(train_data_loader):.5f}")
+            print(f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}, "
+                  f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
             model_path = f'./models/model_{epoch:04d}.pth'
             torch.save(model.state_dict(), model_path)
 
