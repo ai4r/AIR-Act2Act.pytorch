@@ -9,26 +9,28 @@ import torch.utils.data as data
 
 
 def main():
-    lstm_input_length = 30
+    lstm_input_length = 20
     lstm_input_size = 25
+    lstm_output_length = 5
+    lstm_output_size = 24
     batch_size = 64
     hidden_size = 1024
-    output_dim = len(ACTIONS)
+    # output_dim = len(ACTIONS)
     learning_rate = 0.01
     num_epochs = 3000
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # define LSTM model
-    model = Act2Act(lstm_input_size, hidden_size, output_dim)
-    model.cuda()
-    loss_function = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
     # load data set
     dataset = AIRDataSet(data_path='./data files',
                          dim_input=(lstm_input_length, lstm_input_size),
-                         dim_output=(output_dim, 1))
+                         dim_output=(lstm_output_length, lstm_output_size))
     data_loader = data.DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+
+    # define LSTM model
+    model = Act2Act(lstm_input_size, hidden_size, lstm_output_length)
+    model.cuda()
+    loss_function = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     # training
     for epoch in range(1, num_epochs + 1):

@@ -7,13 +7,14 @@ from torch.utils import data
 import os
 import glob
 import numpy as np
+from tqdm import tqdm
 
 from utils.AIR import norm_to_torso
 
 KINECT_FRAME_RATE = 30  # frame rate of kinect camera
 TARGET_FRAME_RATE = 10  # frame rate of extracted data
-ACTIONS = ["A%03d" % a for a in range(1, 11)]
-# ACTIONS = ['A001', 'A005']
+# ACTIONS = ["A%03d" % a for a in range(1, 11)]
+ACTIONS = ['A005']
 
 
 def gen_sequence(data, length):
@@ -33,11 +34,14 @@ class AIRDataSet(data.Dataset):
         self.human_data = list()
         self.robot_data = list()
         self.third_data = list()
+        pbar = tqdm(total=len(self.file_names))
         for file in self.file_names:
             with np.load(file, allow_pickle=True) as data:
                 self.human_data.append([norm_to_torso(human) for human in data['human_info']])
                 self.robot_data.append([norm_to_torso(robot) for robot in data['robot_info']])
                 self.third_data.append(data['third_info'])
+            pbar.update(1)
+        pbar.close()
 
         # extract training data
         self.dim_input = dim_input
@@ -45,32 +49,40 @@ class AIRDataSet(data.Dataset):
         self.b_add_noise = b_add_noise
         self.b_connect_sequence = b_connect_sequence
 
-        self.inputs = list()
-        self.outputs = list()
+        self.encoder_inputs = list()
+        self.decoder_inputs = list()
+        self.decoder_outputs = list()
         step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
-        seq_length = self.dim_input[0]
+        input_length = self.dim_input[0]
+        output_length = self.dim_output[0]
+        pbar = tqdm(total=len(self.third_data))
         for idx, third in enumerate(self.third_data):
             if all(v == 1.0 for v in third):
                 continue
 
             sampled_human_seq = self.human_data[idx][::step]
             sampled_third_seq = self.third_data[idx][::step]
-            for human_seq, third_seq in zip(gen_sequence(sampled_human_seq, seq_length),
-                                            gen_sequence(sampled_third_seq, seq_length)):
-                self.inputs.append(np.concatenate((third_seq, human_seq), axis=1))
-                action_name = [action for action in ACTIONS if action in self.file_names[idx]][0]
-                cur_action = ACTIONS.index(action_name)
-                self.outputs.append(cur_action)
+            for human_seq, third_seq in zip(gen_sequence(sampled_human_seq[:-output_length], input_length),
+                                            gen_sequence(sampled_third_seq[:-output_length], input_length)):
+                self.encoder_inputs.append(np.concatenate((third_seq, human_seq), axis=1))
 
-            # sampled_robot_seq = self.robot_data[idx][::step]  # 나중에 사용할 예정
+            sampled_robot_seq = self.robot_data[idx][::step]
+            for robot_seq in gen_sequence(sampled_robot_seq[input_length-1:-output_length], 1):
+                self.decoder_inputs.append(robot_seq)
+            for robot_seq in gen_sequence(sampled_robot_seq[input_length:], output_length):
+                self.decoder_outputs.append(robot_seq)
+            pbar.update(1)
+        pbar.close()
+
         # self.inputs = np.round(self.inputs, 3)
         print('Training data extracted.')
 
     def __len__(self):
-        return len(self.inputs)
+        return len(self.encoder_inputs)
 
     def __getitem__(self, item):
-        return self.inputs[item].astype("float32"), self.outputs[item]
+        return self.encoder_inputs[item].astype("float32"), \
+                self.decoder_inputs[item].astype("float32"), self.decoder_outputs[item].astype("float32")
 
     def add_random_noise(self):
         pass
