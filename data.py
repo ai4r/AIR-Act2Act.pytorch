@@ -59,7 +59,7 @@ class AIRDataSet(data.Dataset):
 
             # sampled_robot_seq = self.robot_data[idx][::step]  # 나중에 사용할 예정
         # self.inputs = np.round(self.inputs, 3)
-        print('Training data extracted.')
+        print('Data extracted.')
 
     @staticmethod
     def gen_sequence(data, length):
