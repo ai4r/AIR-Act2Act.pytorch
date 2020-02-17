@@ -21,7 +21,7 @@ output_dim = len(ACTIONS)
 model = Act2Act(lstm_input_size, hidden_size, output_dim)
 model.cuda()
 
-# select model to test
+# show all existing models
 MODEL_PATH = './models/'
 model_files = glob.glob(os.path.join(MODEL_PATH, "*.pth"))
 model_names = list()
@@ -29,11 +29,17 @@ for model_file in model_files:
     model_name, _ = os.path.splitext(os.path.basename(model_file))
     model_names.append(model_name)
 print(f'There are {len(model_files)} models ({model_names[0]} ~ {model_names[-1]}).')
-model_num = input(f"Input model number to test ({model_names[0][6:]} ~ {model_names[-1][6:]}): ")
-for model_file in model_files:
-    if model_num in model_file:
-        selected_model = os.path.join(MODEL_PATH, os.path.basename(model_file))
-model.load_state_dict(torch.load(selected_model))
+
+# select model to test
+while True:
+    model_num = input(f"Input model number to test ({model_names[0][6:]} ~ {model_names[-1][6:]}): ")
+    model_num = int(model_num)
+    selected_model = os.path.join(MODEL_PATH, f"model_{model_num:04d}.pth")
+    if os.path.exists(selected_model):
+        print("Load model: ", selected_model)
+        model.load_state_dict(torch.load(selected_model))
+        break
+    print("Model number is wrong.")
 
 # load test data
 TEST_PATH = './data files/valid data/'
