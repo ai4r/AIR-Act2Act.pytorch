@@ -75,7 +75,7 @@ class AIRDataSet(data.Dataset):
         pbar.close()
 
         # self.inputs = np.round(self.inputs, 3)
-        print('Training data extracted.')
+        print('Data extracted.')
 
     def __len__(self):
         return len(self.encoder_inputs)

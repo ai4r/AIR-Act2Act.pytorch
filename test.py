@@ -20,13 +20,32 @@ hidden_size = 1024
 output_dim = len(ACTIONS)
 model = Act2Act(lstm_input_size, hidden_size, output_dim)
 model.cuda()
-model.load_state_dict(torch.load("./models/model_0900.pth"))
+
+# show all existing models
+MODEL_PATH = './models/'
+model_files = glob.glob(os.path.join(MODEL_PATH, "*.pth"))
+model_names = list()
+for model_file in model_files:
+    model_name, _ = os.path.splitext(os.path.basename(model_file))
+    model_names.append(model_name)
+print(f'There are {len(model_files)} models ({model_names[0]} ~ {model_names[-1]}).')
+
+# select model to test
+while True:
+    model_num = input(f"Input model number to test ({model_names[0][6:]} ~ {model_names[-1][6:]}): ")
+    model_num = int(model_num)
+    selected_model = os.path.join(MODEL_PATH, f"model_{model_num:04d}.pth")
+    if os.path.exists(selected_model):
+        print("Load model: ", selected_model)
+        model.load_state_dict(torch.load(selected_model))
+        break
+    print("Model number is wrong.")
 
 # load test data
-test_path = './data files/'
+TEST_PATH = './data files/valid data/'
 data_files = list()
 for action in ACTIONS:
-    data_files.extend(glob.glob(os.path.join(test_path, f"*{action}*.npz")))
+    data_files.extend(glob.glob(os.path.join(TEST_PATH, f"*{action}*.npz")))
 random.shuffle(data_files)
 print(f'There are {len(data_files)} data.')
 for idx in range(min(len(data_files), 20)):
@@ -34,7 +53,7 @@ for idx in range(min(len(data_files), 20)):
     data_name, _ = os.path.splitext(data_file)
     print(f'{idx}: {data_name}')
 
-# select data name to test
+# select data to test
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 while True:
     var = int(input("Input data number to display: "))
