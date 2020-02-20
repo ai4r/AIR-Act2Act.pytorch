@@ -9,17 +9,23 @@ import glob
 import random
 import numpy as np
 
-from model import Act2Act
+from model import Act2Act, Encoder, Decoder
 from data import ACTIONS, KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
-from utils.AIR import norm_to_torso
+from utils.AIR import norm_to_torso, denorm_from_torso
+from animate import draw
 
-# define LSTM model
-lstm_input_length = 30
+
+# define Act2Act model
+lstm_input_length = 20
 lstm_input_size = 25
+lstm_output_length = 5
+lstm_output_size = 24
 hidden_size = 1024
-output_dim = len(ACTIONS)
-model = Act2Act(lstm_input_size, hidden_size, output_dim)
-model.cuda()
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+encoder = Encoder(lstm_input_size, hidden_size, device)
+decoder = Decoder(lstm_output_size, hidden_size, lstm_output_size)
+model = Act2Act(encoder, decoder, device).to(device)
 
 # show all existing models
 MODEL_PATH = './models/'
@@ -54,34 +60,39 @@ for idx in range(min(len(data_files), 20)):
     print(f'{idx}: {data_name}')
 
 # select data to test
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 while True:
     var = int(input("Input data number to display: "))
     test_file = data_files[var]
     print(os.path.normpath(test_file))
 
     with np.load(test_file, allow_pickle=True) as data:
-        human_data = [norm_to_torso(human) for human in data['human_info']]
-        third_data = data['third_info']
-        step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
-        sampled_human_data = human_data[::step]
-        sampled_third_data = third_data[::step]
+        with torch.no_grad():
+            # handle data
+            human_data = [norm_to_torso(human) for human in data['human_info']]
+            robot_data = [norm_to_torso(robot) for robot in data['robot_info']]
+            third_data = data['third_info']
 
-        # ground truth
-        action_name = [action for action in ACTIONS if action in test_file][0]
-        cur_action = ACTIONS.index(action_name)
+            step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
+            sampled_human_data = human_data[::step]
+            sampled_robot_data = robot_data[::step]
+            sampled_third_data = third_data[::step]
 
-        # prediction results
-        outputs = list()
-        predictions = list()
-        for human_seq, third_seq in zip(gen_sequence(sampled_human_data, lstm_input_length),
-                                        gen_sequence(sampled_third_data, lstm_input_length)):
-            inputs = np.concatenate((third_seq, human_seq), axis=1)
-            input_batch = torch.FloatTensor([inputs]).to(device)
-            scores = model(input_batch)
-            prediction = torch.argmax(scores, dim=1)
-            predictions.append(prediction.item())
-            outputs.append(cur_action)
+            # ground truth
+            outputs = sampled_robot_data
 
-        print("true: ", outputs)
-        print("pred: ", predictions)
+            # prediction
+            predictions = sampled_robot_data[:lstm_input_length]
+            for human_seq, third_seq in zip(gen_sequence(sampled_human_data, lstm_input_length),
+                                            gen_sequence(sampled_third_data, lstm_input_length)):
+                encoder_inputs = np.array([np.concatenate((third_seq, human_seq), axis=1)], dtype='float32')
+                decoder_input = np.array([predictions[-1:]], dtype='float32')
+                decoder_outputs = np.array([predictions[-1:]], dtype='float32')
+                prediction = model(torch.from_numpy(encoder_inputs).to(device),
+                                   torch.from_numpy(decoder_input).to(device),
+                                   torch.from_numpy(decoder_outputs).to(device))
+                predictions.append(prediction.cpu().data.numpy()[0][0])
+
+            # draw results
+            outputs = [denorm_from_torso(output) for output in outputs]
+            predictions = [denorm_from_torso(prediction) for prediction in predictions]
+            draw([outputs, predictions], save_path=None, b_show=True)

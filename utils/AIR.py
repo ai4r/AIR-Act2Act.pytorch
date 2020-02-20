@@ -113,3 +113,13 @@ def norm_to_distance(origin, basis, joint):
     result = (joint - origin) / norm if any(joint) else joint
     return result
 
+
+def denorm_from_torso(features):
+    # pelvis
+    pelvis = np.array([0, 0, 0])
+
+    # other joints (spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, shoulderRight, elbowRight, wristRight)
+    spine_len = 3.
+    features = np.array(features) * spine_len
+
+    return np.vstack((pelvis, np.split(features, 8)))

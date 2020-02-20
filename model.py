@@ -66,14 +66,14 @@ class Act2Act(nn.Module):
 
         use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
         if use_teacher_forcing:
-            for t in range(1, output_length):
+            for t in range(output_length):
                 output, hidden, cell = self.decoder(decoder_input, hidden, cell)
-                outputs[:, t-1, :] = output.squeeze(1)
-                decoder_input = decoder_outputs[:, t-1, :].unsqueeze(1)
+                outputs[:, t, :] = output.squeeze(1)
+                decoder_input = decoder_outputs[:, t, :].unsqueeze(1)
         else:
-            for t in range(1, output_length):
+            for t in range(output_length):
                 output, hidden, cell = self.decoder(decoder_input, hidden, cell)
-                outputs[:, t-1, :] = output.squeeze(1)
+                outputs[:, t, :] = output.squeeze(1)
                 decoder_input = output
 
         return outputs

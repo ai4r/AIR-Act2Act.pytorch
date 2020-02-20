@@ -119,4 +119,5 @@ def split_train_valid():
 
 
 if __name__ == "__main__":
+    # gen_datafiles()
     split_train_valid()
