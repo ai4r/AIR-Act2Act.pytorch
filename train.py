@@ -31,10 +31,9 @@ def main():
     valid_data_loader = data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
     # define seq2seq model
-    encoder = Encoder(lstm_input_size, hidden_size)
+    encoder = Encoder(lstm_input_size, hidden_size, device)
     decoder = Decoder(lstm_output_size, hidden_size, lstm_output_size)
-    model = Act2Act(encoder, decoder).to(devic
-    e)
+    model = Act2Act(encoder, decoder, device).to(device)
     loss_function = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 

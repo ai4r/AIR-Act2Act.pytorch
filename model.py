@@ -11,11 +11,12 @@ import random
 
 # seq2seq model for generation of robot action
 class Encoder(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, device):
         super(Encoder, self).__init__()
 
         self.hidden_size = hidden_size
         self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.device = device
 
     def forward(self, inputs):
         hidden, cell = self.init_hidden(inputs.size(0))
@@ -25,8 +26,8 @@ class Encoder(nn.Module):
         return hidden, cell
 
     def init_hidden(self, batch_size):
-        hidden = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
-        cell = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
+        hidden = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).to(self.device))
+        cell = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).to(self.device))
 
         return hidden, cell
 
@@ -47,18 +48,19 @@ class Decoder(nn.Module):
 
 
 class Act2Act(nn.Module):
-    def __init__(self, encoder, decoder):
+    def __init__(self, encoder, decoder, device):
         super(Act2Act, self).__init__()
 
         self.encoder = encoder
         self.decoder = decoder
+        self.device = device
 
         assert encoder.hidden_size == decoder.hidden_size, \
             "Hidden dimensions of encoder and decoder must be equal!"
 
     def forward(self, encoder_inputs, decoder_input, decoder_outputs, teacher_forcing_ratio=0):
         output_length = decoder_outputs.size(1)
-        outputs = torch.zeros(decoder_outputs.size(0), decoder_outputs.size(1), decoder_outputs.size(2)).cuda()
+        outputs = torch.zeros(decoder_outputs.size(0), decoder_outputs.size(1), decoder_outputs.size(2)).to(self.device)
 
         hidden, cell = self.encoder(encoder_inputs)
 
