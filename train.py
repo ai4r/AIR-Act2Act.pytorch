@@ -11,8 +11,8 @@ import torch.utils.data as data
 def main():
     lstm_input_length = 20
     lstm_input_size = 25
-    lstm_output_length = 5
-    lstm_output_size = 24
+    lstm_output_length = 10
+    lstm_output_size = 10
     batch_size = 64
     hidden_size = 1024
     learning_rate = 0.001

@@ -10,6 +10,7 @@ import numpy as np
 from tqdm import tqdm
 
 from utils.AIR import norm_to_torso
+from utils.robot import norm_to_joint_angles
 
 KINECT_FRAME_RATE = 30  # frame rate of kinect camera
 TARGET_FRAME_RATE = 10  # frame rate of extracted data
@@ -38,7 +39,7 @@ class AIRDataSet(data.Dataset):
         for file in self.file_names:
             with np.load(file, allow_pickle=True) as data:
                 self.human_data.append([norm_to_torso(human) for human in data['human_info']])
-                self.robot_data.append([norm_to_torso(robot) for robot in data['robot_info']])
+                self.robot_data.append([norm_to_joint_angles(robot) for robot in data['robot_info']])
                 self.third_data.append(data['third_info'])
             pbar.update(1)
         pbar.close()

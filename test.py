@@ -12,6 +12,7 @@ import numpy as np
 from model import Act2Act, Encoder, Decoder
 from data import ACTIONS, KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
 from utils.AIR import norm_to_torso, denorm_from_torso
+from utils.robot import norm_to_joint_angles, denorm_from_joint_angles
 from animate import draw
 
 
@@ -19,7 +20,7 @@ from animate import draw
 lstm_input_length = 20
 lstm_input_size = 25
 lstm_output_length = 5
-lstm_output_size = 24
+lstm_output_size = 10
 hidden_size = 1024
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -69,7 +70,7 @@ while True:
         with torch.no_grad():
             # handle data
             human_data = [norm_to_torso(human) for human in data['human_info']]
-            robot_data = [norm_to_torso(robot) for robot in data['robot_info']]
+            robot_data = [norm_to_joint_angles(robot) for robot in data['robot_info']]
             third_data = data['third_info']
 
             step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
@@ -94,6 +95,6 @@ while True:
                 predictions.append(prediction.cpu().data.numpy()[0][0])
 
             # draw results
-            outputs = [denorm_from_torso(output) for output in outputs]
-            predictions = [denorm_from_torso(prediction) for prediction in predictions]
+            outputs = [denorm_from_joint_angles(output) for output in outputs]
+            predictions = [denorm_from_joint_angles(prediction) for prediction in predictions]
             draw([outputs, predictions], save_path=None, b_show=True)
