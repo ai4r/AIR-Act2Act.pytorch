@@ -14,6 +14,7 @@ from data import ACTIONS, KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
 from utils.AIR import norm_to_torso, denorm_from_torso
 from animate import draw
 
+
 # define Act2Act model
 lstm_input_length = 20
 lstm_input_size = 25
@@ -22,9 +23,9 @@ lstm_output_size = 24
 hidden_size = 1024
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-enc = Encoder(lstm_input_size, hidden_size, n_layers=1, dropout=.0)
-dec = Decoder(lstm_output_size, hidden_size, n_layers=1, dropout=.0)
-model = Act2Act(enc, dec, device).to(device)
+encoder = Encoder(lstm_input_size, hidden_size, device, n_layers=1, dropout=.0)
+decoder = Decoder(lstm_output_size, hidden_size, n_layers=1, dropout=.0)
+model = Act2Act(encoder, decoder, device).to(device)
 
 # show all existing models
 MODEL_PATH = './models/'
@@ -84,13 +85,13 @@ while True:
             for human_seq, third_seq in zip(gen_sequence(sampled_human_data, lstm_input_length),
                                             gen_sequence(sampled_third_data, lstm_input_length)):
                 encoder_inputs = np.array([np.concatenate((third_seq, human_seq), axis=1)], dtype='float32')
-                decoder_inputs = np.array([predictions[-1:]], dtype='float32')
+                decoder_input = np.array([predictions[-1:]], dtype='float32')
                 decoder_outputs = np.array([predictions[-1:]], dtype='float32')
-                scores = model(torch.from_numpy(encoder_inputs).to(device),
-                               torch.from_numpy(decoder_inputs).to(device),
-                               torch.from_numpy(decoder_outputs).to(device),
-                               teacher_forcing_ratio=.0)
-                predictions.append(scores.cpu().data.numpy()[0][0])
+                prediction = model(torch.from_numpy(encoder_inputs).to(device),
+                                   torch.from_numpy(decoder_input).to(device),
+                                   torch.from_numpy(decoder_outputs).to(device),
+                                   teacher_forcing_ratio=.0)
+                predictions.append(prediction.cpu().data.numpy()[0][0])
 
             # draw results
             outputs = [denorm_from_torso(output) for output in outputs]

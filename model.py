@@ -10,53 +10,11 @@ import torch.nn as nn
 import random
 
 
-class Act2Act(nn.Module):
-    def __init__(self, encoder, decoder, device):
-        super(Act2Act, self).__init__()
-
-        self.encoder = encoder
-        self.decoder = decoder
-        self.device = device
-
-        assert encoder.hidden_size == decoder.hidden_size, "Hidden dimensions of encoder and decoder must be equal!"
-        assert encoder.n_layers == decoder.n_layers, "Encoder and decoder must have equal number of layers!"
-
-    def forward(self, encoder_inputs, decoder_inputs, decoder_outputs, teacher_forcing_ratio=0.5):
-        batch_size = decoder_outputs.shape[0]
-        trg_len = decoder_outputs.shape[1]
-        trg_size = self.decoder.output_size
-
-        # tensor to store decoder outputs
-        outputs = torch.zeros(batch_size, trg_len, trg_size).to(self.device)
-
-        # last hidden state of the encoder is used as the initial hidden state of the decoder
-        hidden, cell = self.encoder(encoder_inputs)
-
-        # first input to the decoder is the <sos> tokens
-        inp = decoder_inputs
-
-        for t in range(trg_len):
-            # insert input token embedding, previous hidden and previous cell states
-            # receive output tensor (predictions) and new hidden and cell states
-            out, hidden, cell = self.decoder(inp, hidden, cell)
-
-            # place predictions in a tensor holding predictions for each token
-            outputs[:, t, :] = out.squeeze(1)
-
-            # decide if we are going to use teacher forcing or not
-            teacher_force = random.random() < teacher_forcing_ratio
-
-            # if teacher forcing, use actual next token as next input
-            # if not, use predicted token
-            inp = decoder_outputs[:, t, :].unsqueeze(1) if teacher_force else out
-
-        return outputs
-
-
 class Encoder(nn.Module):
-    def __init__(self, input_size, hidden_size, n_layers=1, dropout=.2):
+    def __init__(self, input_size, hidden_size, device, n_layers=1, dropout=.2):
         super(Encoder, self).__init__()
 
+        self.device = device
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.n_layers = n_layers
@@ -74,8 +32,8 @@ class Encoder(nn.Module):
         return hidden, cell
 
     def init_hidden(self, batch_size):
-        hidden = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
-        cell = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
+        hidden = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).to(self.device))
+        cell = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).to(self.device))
 
         return hidden, cell
 
@@ -100,3 +58,37 @@ class Decoder(nn.Module):
 
         prediction = self.fc(output)
         return prediction, hidden, cell
+
+
+# seq2seq model for generation of robot action
+class Act2Act(nn.Module):
+    def __init__(self, encoder, decoder, device):
+        super(Act2Act, self).__init__()
+
+        self.encoder = encoder
+        self.decoder = decoder
+        self.device = device
+
+        assert encoder.hidden_size == decoder.hidden_size, \
+            "Hidden dimensions of encoder and decoder must be equal!"
+        assert encoder.n_layers == decoder.n_layers, \
+            "Encoder and decoder must have equal number of layers!"
+
+    def forward(self, encoder_inputs, decoder_input, decoder_outputs, teacher_forcing_ratio=0.5):
+        batch_size = decoder_outputs.shape[0]
+        output_length = decoder_outputs.shape[1]
+        output_size = self.decoder.output_size
+        outputs = torch.zeros(batch_size, output_length, output_size).to(self.device)
+
+        hidden, cell = self.encoder(encoder_inputs)
+
+        for t in range(output_length):
+            output, hidden, cell = self.decoder(decoder_input, hidden, cell)
+            outputs[:, t, :] = output.squeeze(1)
+            teacher_force = random.random() < teacher_forcing_ratio
+            if teacher_force:
+                decoder_input = decoder_outputs[:, t, :].unsqueeze(1)
+            else:
+                decoder_input = output
+
+        return outputs
