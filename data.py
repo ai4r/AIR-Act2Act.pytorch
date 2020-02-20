@@ -14,7 +14,7 @@ from utils.AIR import norm_to_torso
 KINECT_FRAME_RATE = 30  # frame rate of kinect camera
 TARGET_FRAME_RATE = 10  # frame rate of extracted data
 # ACTIONS = ["A%03d" % a for a in range(1, 11)]
-ACTIONS = ['A005']
+ACTIONS = ['A001']
 
 
 def gen_sequence(data, length):

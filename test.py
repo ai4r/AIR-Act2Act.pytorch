@@ -88,7 +88,8 @@ while True:
                 decoder_outputs = np.array([predictions[-1:]], dtype='float32')
                 scores = model(torch.from_numpy(encoder_inputs).to(device),
                                torch.from_numpy(decoder_inputs).to(device),
-                               torch.from_numpy(decoder_outputs).to(device))
+                               torch.from_numpy(decoder_outputs).to(device),
+                               teacher_forcing_ratio=.0)
                 predictions.append(scores.cpu().data.numpy()[0][0])
 
             # draw results

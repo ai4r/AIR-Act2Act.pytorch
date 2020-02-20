@@ -41,15 +41,14 @@ class Act2Act(nn.Module):
             out, hidden, cell = self.decoder(inp, hidden, cell)
 
             # place predictions in a tensor holding predictions for each token
-            outputs[:, t, :] = out
+            outputs[:, t, :] = out.squeeze(1)
 
             # decide if we are going to use teacher forcing or not
             teacher_force = random.random() < teacher_forcing_ratio
 
             # if teacher forcing, use actual next token as next input
             # if not, use predicted token
-            inp = decoder_outputs[:, t, :] if teacher_force else out
-            inp = inp.unsqueeze(1)
+            inp = decoder_outputs[:, t, :].unsqueeze(1) if teacher_force else out
 
         return outputs
 
@@ -99,5 +98,5 @@ class Decoder(nn.Module):
 
         output, (hidden, cell) = self.lstm(input, (hidden, cell))
 
-        prediction = self.fc(output.squeeze(1))
+        prediction = self.fc(output)
         return prediction, hidden, cell

@@ -15,7 +15,6 @@ def main():
     lstm_output_size = 24
     batch_size = 64
     hidden_size = 1024
-    learning_rate = 0.01
     num_epochs = 200
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -42,16 +41,14 @@ def main():
 
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
     print(f'The model has {count_parameters(model):,} trainable parameters')
 
-    loss_function = nn.MSELoss(reduction='elementwise_mean')
+    loss_function = nn.MSELoss()
     optimizer = optim.Adam(model.parameters())
 
     # training
     for epoch in range(1, num_epochs + 1):
         train_loss = 0.0
-        # train_acc = 0.0
         for encoder_inputs, decoder_inputs, decoder_outputs in train_data_loader:
             model.zero_grad()
 
@@ -59,37 +56,29 @@ def main():
             decoder_inputs = decoder_inputs.to(device)
             decoder_outputs = decoder_outputs.to(device)
 
-            train_scores = model(encoder_inputs, decoder_inputs, decoder_outputs)
-            # train_predictions = torch.argmax(train_scores, dim=1)
-            # acc = (train_predictions == decoder_outputs).float().mean()
-            # train_acc += acc.item()
-
+            train_scores = model(encoder_inputs, decoder_inputs, decoder_outputs,
+                                 teacher_forcing_ratio=.5)
             loss = loss_function(train_scores, decoder_outputs)
             train_loss += loss.item()
 
             loss.backward()
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), clip=1)
             optimizer.step()
 
         # validation
         if epoch % 10 == 0:
             valid_loss = 0.0
-            valid_acc = 0.0
             with torch.no_grad():
                 for valid_enc_inputs, valid_dec_inputs, valid_dec_outputs in valid_data_loader:
                     valid_enc_inputs = valid_enc_inputs.to(device)
                     valid_dec_inputs = valid_dec_inputs.to(device)
                     valid_dec_outputs = valid_dec_outputs.to(device)
 
-                    valid_scores = model(valid_enc_inputs, valid_dec_inputs, valid_dec_outputs)
-                    # valid_predictions = torch.argmax(valid_scores, dim=1)
-                    # acc = (valid_predictions == valid_outputs).float().mean()
-                    # valid_acc += acc.item()
-
+                    valid_scores = model(valid_enc_inputs, valid_dec_inputs, valid_dec_outputs,
+                                         teacher_forcing_ratio=.0)
                     loss = loss_function(valid_scores, valid_dec_outputs)
                     valid_loss += loss.item()
 
-            # Print average training/validation loss and accuracy
+            # print average training/validation loss and accuracy
             print(f"Epoch {epoch}")
             print(f"Training Loss: {train_loss / len(train_data_loader):.5f},",
                   f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}")
