@@ -17,9 +17,9 @@ TARGET_FRAME_RATE = 10  # frame rate of extracted data
 ACTIONS = ['A005']
 
 
-def gen_sequence(data, length):
-    for start_idx in range(len(data) - length):
-        yield list(data[start_idx:start_idx + length])
+def gen_sequence(data_, length):
+    for start_idx in range(len(data_) - length):
+        yield list(data_[start_idx:start_idx + length])
 
 
 class AIRDataSet(data.Dataset):
@@ -81,8 +81,9 @@ class AIRDataSet(data.Dataset):
         return len(self.encoder_inputs)
 
     def __getitem__(self, item):
-        return self.encoder_inputs[item].astype("float32"), \
-                self.decoder_inputs[item].astype("float32"), self.decoder_outputs[item].astype("float32")
+        return np.array(self.encoder_inputs[item], dtype="float32"), \
+               np.array(self.decoder_inputs[item], dtype="float32"), \
+               np.array(self.decoder_outputs[item], dtype="float32")
 
     def add_random_noise(self):
         pass

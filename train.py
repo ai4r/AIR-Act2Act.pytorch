@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from model import Act2Act
-from data import AIRDataSet, ACTIONS
+from model import Act2Act, Encoder, Decoder
+from data import AIRDataSet
 
 import torch
 import torch.nn as nn
@@ -15,7 +15,6 @@ def main():
     lstm_output_size = 24
     batch_size = 64
     hidden_size = 1024
-    # output_dim = len(ACTIONS)
     learning_rate = 0.01
     num_epochs = 200
 
@@ -24,35 +23,34 @@ def main():
     # load data set
     train_dataset = AIRDataSet(data_path='./data files/train data',
                                dim_input=(lstm_input_length, lstm_input_size),
-                               dim_output=(output_dim, 1))
+                               dim_output=(lstm_output_length, lstm_output_size))
     valid_dataset = AIRDataSet(data_path='./data files/valid data',
                                dim_input=(lstm_input_length, lstm_input_size),
-                               dim_output=(output_dim, 1))
+                               dim_output=(lstm_output_length, lstm_output_size))
     train_data_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     valid_data_loader = data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
-    # define LSTM model
-    model = Act2Act(lstm_input_size, hidden_size, lstm_output_length)
-    model.cuda()
-    loss_function = nn.CrossEntropyLoss()
+    # define seq2seq model
+    encoder = Encoder(lstm_input_size, hidden_size)
+    decoder = Decoder(lstm_output_size, hidden_size, lstm_output_size)
+    model = Act2Act(encoder, decoder).to(devic
+    e)
+    loss_function = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     # training
     for epoch in range(1, num_epochs + 1):
         train_loss = 0.0
-        train_acc = 0.0
-        for train_inputs, train_outputs in train_data_loader:
+        for train_enc_inputs, train_dec_inputs, train_dec_outputs in train_data_loader:
             model.zero_grad()
 
-            train_inputs = train_inputs.to(device)
-            train_outputs = train_outputs.to(device)
+            train_enc_inputs = train_enc_inputs.to(device)
+            train_dec_inputs = train_dec_inputs.to(device)
+            train_dec_outputs = train_dec_outputs.to(device)
 
-            train_scores = model(train_inputs)
-            train_predictions = torch.argmax(train_scores, dim=1)
-            acc = (train_predictions == train_outputs).float().mean()
-            train_acc += acc.item()
+            train_predictions = model(train_enc_inputs, train_dec_inputs, train_dec_outputs, teacher_forcing_ratio=0.5)
 
-            loss = loss_function(train_scores, train_outputs)
+            loss = loss_function(train_predictions, train_dec_outputs)
             train_loss += loss.item()
 
             loss.backward()
@@ -61,26 +59,21 @@ def main():
         # validation
         if epoch % 10 == 0:
             valid_loss = 0.0
-            valid_acc = 0.0
             with torch.no_grad():
-                for valid_inputs, valid_outputs in valid_data_loader:
-                    valid_inputs = valid_inputs.to(device)
-                    valid_outputs = valid_outputs.to(device)
+                for valid_enc_inputs, valid_dec_inputs, valid_dec_outputs in train_data_loader:
+                    valid_enc_inputs = valid_enc_inputs.to(device)
+                    valid_dec_inputs = valid_dec_inputs.to(device)
+                    valid_dec_outputs = valid_dec_outputs.to(device)
 
-                    valid_scores = model(valid_inputs)
-                    valid_predictions = torch.argmax(valid_scores, dim=1)
-                    acc = (valid_predictions == valid_outputs).float().mean()
-                    valid_acc += acc.item()
+                    valid_predictions = model(valid_enc_inputs, valid_dec_inputs, valid_dec_outputs)
 
-                    loss = loss_function(valid_scores, valid_outputs)
+                    loss = loss_function(valid_predictions, valid_dec_outputs)
                     valid_loss += loss.item()
 
-            # Print average training/validation loss and accuracy
+            # Print average training/validation loss
             print(f"Epoch {epoch}")
-            print(f"Training Loss: {train_loss / len(train_data_loader):.5f}, "
-                  f"Training Acc: {train_acc / len(train_data_loader):.5f}")
-            print(f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}, "
-                  f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
+            print(f"Training Loss: {train_loss / len(train_data_loader):.5f}")
+            print(f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}")
             model_path = f'./models/model_{epoch:04d}.pth'
             torch.save(model.state_dict(), model_path)
 
