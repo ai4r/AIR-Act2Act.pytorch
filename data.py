@@ -81,8 +81,9 @@ class AIRDataSet(data.Dataset):
         return len(self.encoder_inputs)
 
     def __getitem__(self, item):
-        return self.encoder_inputs[item].astype("float32"), \
-                self.decoder_inputs[item].astype("float32"), self.decoder_outputs[item].astype("float32")
+        return np.array(self.encoder_inputs[item], dtype="float32"), \
+               np.array(self.decoder_inputs[item], dtype="float32"), \
+               np.array(self.decoder_outputs[item], dtype="float32")
 
     def add_random_noise(self):
         pass
