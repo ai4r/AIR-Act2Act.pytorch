@@ -17,9 +17,9 @@ TARGET_FRAME_RATE = 10  # frame rate of extracted data
 ACTIONS = ['A001']
 
 
-def gen_sequence(data_, length):
-    for start_idx in range(len(data_) - length):
-        yield list(data_[start_idx:start_idx + length])
+def gen_sequence(frames, length):
+    for start_idx in range(len(frames) - length):
+        yield list(frames[start_idx:start_idx + length])
 
 
 class AIRDataSet(data.Dataset):
