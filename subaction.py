@@ -72,7 +72,7 @@ def make_dataframe(inputs, input_length):
         [F"f{a}j{b+1}" for a in range(input_length) for b in range(24)])  # f0j1 ~ f0j24, f1j1 ~ f1j24, ...
 
     df = pd.DataFrame(columns=feature_name)
-    pbar = tqdm(total=len(inputs))
+    # pbar = tqdm(total=len(inputs))
     for i, a in enumerate(inputs):  # 파일들에 대해
         temp = dict()
         for j, b in enumerate(a):  # 20frame짜리 시퀀스에 대해
@@ -82,8 +82,8 @@ def make_dataframe(inputs, input_length):
                 else:
                     temp[F"f{j}j{k}"] = c
         df = df.append(temp, ignore_index=True)
-        pbar.update(1)
-    pbar.close()
+        # pbar.update(1)
+    # pbar.close()
 
     # 새로운 분산 feature 추가.  vj0 == 해당 시퀀스의 첫번째 frame과 마지막 frame에서 0번째 joint의 차이
     for i in range(20):

@@ -6,7 +6,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from subaction import make_dataframe, SEQ_LENGTH
+from subaction import make_dataframe, SEQ_LENGTH, N_CLUSTERS
 
 '''
 A001 : 문열고 들어오기
@@ -42,11 +42,10 @@ k=3
 
 A006 : 손으로 얼굴을 가리기
 k=4
-0: ?
-1: 팔올리기 
-2: 가만히 있기
-3: ?
-
+0: 두 손으로 울기
+1: 내리기 & 가만히 있기 
+2: 왼손으로 울기
+3: 오른손으로 울기
 
 A007 : 하이파이브 하기
 k=4
@@ -200,15 +199,12 @@ def draw_parts(ax, joints):
 
 
 def main():
-    # global variable
-    k = [3, 3, 3, 5, 3, 4, 4, 4, 5, 3]  # elbow 값에 기반하여 따라서 k값을 설정해놓음
-
     # 보고싶은 액션 입력
-    action = "A005"
+    action = "A006"
 
     index = int(action[-2:]) - 1
     global km_model
-    km_model = pickle.load(open(f"./models/k-means/{action}_full_{k[index]}_cluster.pkl", "rb"))
+    km_model = pickle.load(open(f"./models/k-means/{action}_full_{N_CLUSTERS[index]}_cluster.pkl", "rb"))
 
     # show all test data
     data_files = glob.glob(os.path.normpath(os.path.join('./data files/valid data', F"*{action}*.npz")))
