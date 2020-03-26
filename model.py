@@ -9,9 +9,10 @@ import torch.nn as nn
 
 
 class Act2Act(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, device, input_size, hidden_size, output_size):
         super(Act2Act, self).__init__()
 
+        self.device = device
         self.hidden_size = hidden_size
         self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
@@ -27,6 +28,6 @@ class Act2Act(nn.Module):
         return output
 
     def init_hidden(self, batch_size):
-        hidden = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
-        cell = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).cuda())
+        hidden = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).to(self.device))
+        cell = autograd.Variable(torch.zeros(1, batch_size, self.hidden_size).to(self.device))
         return hidden, cell

@@ -39,8 +39,6 @@ def gen_datafiles():
         # extract distance features first
         n_frames = min(len(human_info), len(robot_info), len(third_info))
         max_value = max(max(len(human_info) - n_frames, len(robot_info) - n_frames), len(third_info) - n_frames)
-        if max_value > 30:
-            wer = 234
         for f in range(n_frames):
             n_body = sum(1 for b in third_info[f] if b is not None)
             if n_body != 2:
@@ -119,4 +117,5 @@ def split_train_valid():
 
 
 if __name__ == "__main__":
+    gen_datafiles()
     split_train_valid()

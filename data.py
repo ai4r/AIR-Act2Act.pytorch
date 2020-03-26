@@ -17,7 +17,7 @@ ACTIONS = ["A%03d" % a for a in range(1, 11)]
 
 
 def gen_sequence(data, length):
-    for start_idx in range(len(data) - length):
+    for start_idx in range(len(data) - length + 1):
         yield list(data[start_idx:start_idx + length])
 
 
