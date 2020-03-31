@@ -74,6 +74,15 @@ def move_camera_to_front(body_info, body_id):
     return body_info
 
 
+def norm_features(body, method='torso'):
+    if method == 'torso':
+        return norm_to_torso(body)
+    elif method == 'vector':
+        return norm_to_vector(body)
+    else:
+        raise Exception(f'Wrong normalization type: {method}')
+
+
 # move origin to torso and
 # normalize to the distance between torso and spineShoulder
 def norm_to_torso(body):
@@ -114,6 +123,31 @@ def norm_to_distance(origin, basis, joint):
     return result
 
 
+def norm_to_vector(body):
+    torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, shoulderRight, elbowRight, wristRight = \
+        get_upper_body_joints(body)
+
+    features = list()
+    features.extend(norm_to_distance(torso, spineShoulder, spineShoulder))
+    features.extend(norm_to_distance(spineShoulder, head, head))
+    features.extend(norm_to_distance(spineShoulder, shoulderLeft, shoulderLeft))
+    features.extend(norm_to_distance(shoulderLeft, elbowLeft, elbowLeft))
+    features.extend(norm_to_distance(elbowLeft, wristLeft, wristLeft))
+    features.extend(norm_to_distance(spineShoulder, shoulderRight, shoulderRight))
+    features.extend(norm_to_distance(shoulderRight, elbowRight, elbowRight))
+    features.extend(norm_to_distance(elbowRight, wristRight, wristRight))
+    return features
+
+
+def denorm_features(features, method='torso'):
+    if method == 'torso':
+        return denorm_from_torso(features)
+    elif method == 'vector':
+        return denorm_from_vector(features)
+    else:
+        raise Exception(f'Wrong normalization type: {method}')
+
+
 def denorm_from_torso(features):
     # pelvis
     pelvis = np.array([0, 0, 0])
@@ -123,3 +157,23 @@ def denorm_from_torso(features):
     features = np.array(features) * spine_len
 
     return np.vstack((pelvis, np.split(features, 8)))
+
+
+def denorm_from_vector(features):
+    pelvis = np.array([0, 0, 0])
+    v_spineShoulder, v_head, v_shoulderLeft, v_elbowLeft, v_wristLeft, v_shoulderRight, v_elbowRight, v_wristRight \
+        = np.split(np.array(features), 8)
+
+    spine_len = 3.
+    spineShoulder = v_spineShoulder * spine_len
+    head = spineShoulder + v_head * spine_len / 2.
+    shoulderLeft = spineShoulder + v_shoulderLeft * spine_len / 3.
+    elbowLeft = shoulderLeft + v_elbowLeft * spine_len / 2.
+    wristLeft = elbowLeft + v_wristLeft * spine_len / 2.
+    shoulderRight = spineShoulder + v_shoulderRight * spine_len / 3.
+    elbowRight = shoulderRight + v_elbowRight * spine_len / 2.
+    wristRight = elbowRight + v_wristRight * spine_len / 2.
+
+    return np.vstack((pelvis, spineShoulder, head,
+                      shoulderLeft, elbowLeft, wristLeft,
+                      shoulderRight, elbowRight, wristRight))

@@ -9,13 +9,16 @@ from sklearn.cluster import KMeans
 from sklearn import metrics
 from scipy.spatial.distance import cdist
 
-from utils.AIR import norm_to_torso, denorm_from_torso
+from utils.AIR import norm_features, denorm_features
 from utils.draw import draw
 from data import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
 
 train_path = './data files/train data'
 test_path = './data files/valid data'
 model_path = './models/k-means'
+
+# skeleton feature normalization
+norm_method = 'torso'
 
 # 알맞은 k값 넣기
 N_CLUSTERS = [3, 3, 3, 5, 3, 4, 4, 4, 5, 3]
@@ -75,8 +78,8 @@ def preprocessing(input_length, file_names):
     pbar = tqdm(total=len(file_names))
     for file in file_names:
         with np.load(file, allow_pickle=True) as data:
-            human_data.append([norm_to_torso(human) for human in data['human_info']])
-            robot_data.append([norm_to_torso(robot) for robot in data['robot_info']])
+            human_data.append([norm_features(human, norm_method) for human in data['human_info']])
+            robot_data.append([norm_features(robot, norm_method) for robot in data['robot_info']])
             third_data.append(data['third_info'])
         pbar.update(1)
     pbar.close()
@@ -174,8 +177,10 @@ def get_kmeans_insight(df):
 
 def test():
     # 보고싶은 액션 입력
-    actions = ["A001", "A004", "A005", "A006", "A008"]
-    n_clusters = 15
+    # actions = ["A001", "A004", "A005", "A006", "A008"]
+    # n_clusters = 15
+    actions = ["A006"]
+    n_clusters = 4
 
     model_file = os.path.join(model_path, f"{''.join(actions)}_full_{n_clusters}_cluster.pkl")
     if not os.path.exists(model_file):
@@ -199,7 +204,7 @@ def test():
         data_file = data_files[var]
 
         with np.load(data_file, allow_pickle=True) as data:
-            human_data = [norm_to_torso(human) for human in data['human_info']]
+            human_data = [norm_features(human, norm_method) for human in data['human_info']]
             third_data = data['third_info']
 
             sampled_human_data = human_data[::3]
@@ -219,7 +224,7 @@ def test():
             features = list()
             for f in range(len(sampled_human_data)):
                 cur_features = sampled_human_data[f]
-                cur_features = denorm_from_torso(cur_features)
+                cur_features = denorm_features(cur_features, norm_method)
                 features.append(cur_features)
             predictions = ["None"] * (SEQ_LENGTH - 1) + predictions
             draw([features], [predictions], save_path=None, b_show=True)

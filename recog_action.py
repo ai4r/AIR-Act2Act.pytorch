@@ -10,9 +10,9 @@ import torch.optim as optim
 import torch.utils.data as data
 
 from model import Act2Act
-from data import AIRDataSet, ACTIONS
+from data import AIRDataSet, ACTIONS, norm_method
 from data import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
-from utils.AIR import norm_to_torso, denorm_from_torso
+from utils.AIR import norm_features, denorm_features
 from utils.draw import draw
 
 
@@ -142,7 +142,7 @@ def test():
         print(os.path.normpath(test_file))
 
         with np.load(test_file, allow_pickle=True) as data:
-            human_data = [norm_to_torso(human) for human in data['human_info']]
+            human_data = [norm_features(human, norm_method) for human in data['human_info']]
             third_data = data['third_info']
             step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
             sampled_human_data = human_data[::step]
@@ -171,7 +171,7 @@ def test():
             features = list()
             for f in range(len(sampled_human_data)):
                 cur_features = sampled_human_data[f]
-                cur_features = denorm_from_torso(cur_features)
+                cur_features = denorm_features(cur_features, norm_method)
                 features.append(cur_features)
 
             predictions = ["None"] * (lstm_input_length - 1) + predictions

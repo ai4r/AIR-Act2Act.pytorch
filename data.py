@@ -8,8 +8,12 @@ import os
 import glob
 import numpy as np
 
-from utils.AIR import norm_to_torso
+from utils.AIR import norm_features
 
+# skeleton feature normalization
+norm_method = 'torso'
+
+# other parameters
 KINECT_FRAME_RATE = 30  # frame rate of kinect camera
 TARGET_FRAME_RATE = 10  # frame rate of extracted data
 ACTIONS = ["A%03d" % a for a in range(1, 11)]
@@ -35,8 +39,8 @@ class AIRDataSet(data.Dataset):
         self.third_data = list()
         for file in self.file_names:
             with np.load(file, allow_pickle=True) as data:
-                self.human_data.append([norm_to_torso(human) for human in data['human_info']])
-                self.robot_data.append([norm_to_torso(robot) for robot in data['robot_info']])
+                self.human_data.append([norm_features(human, norm_method) for human in data['human_info']])
+                self.robot_data.append([norm_features(robot, norm_method) for robot in data['robot_info']])
                 self.third_data.append(data['third_info'])
 
         # extract training data
