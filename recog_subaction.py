@@ -18,7 +18,7 @@ test_path = './data files/valid data'
 model_path = './models/k-means'
 
 # skeleton feature normalization
-norm_method = 'torso'
+norm_method = 'vector'
 
 # 알맞은 k값 넣기
 N_CLUSTERS = [3, 3, 3, 5, 3, 4, 4, 4, 5, 3]
@@ -177,10 +177,14 @@ def get_kmeans_insight(df):
 
 def test():
     # 보고싶은 액션 입력
-    # actions = ["A001", "A004", "A005", "A006", "A008"]
-    # n_clusters = 15
-    actions = ["A006"]
-    n_clusters = 4
+    # actions = ["A001", "A004"]
+    # n_clusters = 4
+
+    # actions = ["A004", "A005", "A006"]
+    # n_clusters = 9
+
+    actions = ["A004", "A005", "A008"]
+    n_clusters = 7
 
     model_file = os.path.join(model_path, f"{''.join(actions)}_full_{n_clusters}_cluster.pkl")
     if not os.path.exists(model_file):
@@ -201,9 +205,12 @@ def test():
     # select data name to draw
     while True:
         var = int(input("Input data number to display: "))
+    # for var in range(n_data):
         data_file = data_files[var]
 
         with np.load(data_file, allow_pickle=True) as data:
+            print(os.path.basename(data_file))
+
             human_data = [norm_features(human, norm_method) for human in data['human_info']]
             third_data = data['third_info']
 
@@ -230,5 +237,65 @@ def test():
             draw([features], [predictions], save_path=None, b_show=True)
 
 
+def test2():
+    actions_1 = ["A001", "A004"]
+    n_clusters_1 = 4
+    model_file_1 = os.path.join(model_path, f"{''.join(actions_1)}_full_{n_clusters_1}_cluster.pkl")
+    km_model_1 = pickle.load(open(model_file_1, "rb"))
+
+    actions_2 = ["A004", "A005", "A006"]
+    n_clusters_2 = 9
+    model_file_2 = os.path.join(model_path, f"{''.join(actions_2)}_full_{n_clusters_2}_cluster.pkl")
+    km_model_2 = pickle.load(open(model_file_2, "rb"))
+
+    actions_3 = ["A004", "A005", "A008"]
+    n_clusters_3 = 7
+    model_file_3 = os.path.join(model_path, f"{''.join(actions_3)}_full_{n_clusters_3}_cluster.pkl")
+    km_model_3 = pickle.load(open(model_file_3, "rb"))
+
+    actions = ["A005"]
+
+    # show all test data
+    data_files = list()
+    for action in actions:
+        data_files.extend(glob.glob(os.path.join(test_path, F"*{action}*.npz")))
+    data_files.sort()
+    n_data = len(data_files)
+
+    print('There are %d data.' % n_data)
+    for data_idx in range(n_data):
+        print('%d: %s' % (data_idx, os.path.basename(data_files[data_idx])))
+
+    # select data name to predict
+    for var in range(n_data):
+        data_file = data_files[var]
+
+        with np.load(data_file, allow_pickle=True) as data:
+            print(os.path.basename(data_file))
+
+            human_data = [norm_features(human, norm_method) for human in data['human_info']]
+            third_data = data['third_info']
+
+            sampled_human_data = human_data[::3]
+            sampled_third_data = third_data[::3]
+
+            # recognize sub-action
+            predictions_1 = list()
+            predictions_2 = list()
+            predictions_3 = list()
+            for human_seq, third_seq in zip(gen_sequence(sampled_human_data, SEQ_LENGTH),
+                                            gen_sequence(sampled_third_data, SEQ_LENGTH)):
+                seq = np.concatenate((third_seq, human_seq), axis=1)
+                df = make_dataframe([seq], SEQ_LENGTH)
+                # predictions_1.append(km_model_1.predict(df)[0])
+                predictions_2.append(km_model_2.predict(df)[0])
+                predictions_3.append(km_model_3.predict(df)[0])
+
+            # print(predictions_1)
+            print(predictions_2)
+            print(predictions_3)
+
+
 if "__main__" == __name__:
     test()
+    # test2()
