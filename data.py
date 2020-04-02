@@ -7,41 +7,60 @@ from torch.utils import data
 import os
 import glob
 import numpy as np
+from tqdm import tqdm
 
 from utils.AIR import norm_features
+from k_clustering import KMeansClustering
+from constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
 
 # skeleton feature normalization
-norm_method = 'torso'
+norm_method = 'vector'
 
 # other parameters
-KINECT_FRAME_RATE = 30  # frame rate of kinect camera
-TARGET_FRAME_RATE = 10  # frame rate of extracted data
-ACTIONS = ["A%03d" % a for a in range(1, 11)]
-# ACTIONS = ['A001', 'A005']
-
-
-def gen_sequence(data, length):
-    for start_idx in range(len(data) - length + 1):
-        yield list(data[start_idx:start_idx + length])
+# ACTIONS = ["A%03d" % a for a in range(1, 11)]
+ACTIONS = ['A001', 'A004', 'A005', 'A006', 'A008']
+N_SUB_ACTIONS = 14
 
 
 class AIRDataSet(data.Dataset):
-    def __init__(self, data_path, dim_input, dim_output, b_add_noise=False, b_connect_sequence=False):
+    def __init__(self, data_path, dim_input, dim_output, data_name=None, b_add_noise=False, b_connect_sequence=False):
+        # load k-means clustering models
+        seq_length = 15
+        train_paths = ['./data files/train data', './data files/valid data']
+        model_path = './models/k-means'
+
+        actions_1 = ["A001", "A004"]
+        n_clusters_1 = 4
+        self.kmeans_1 = KMeansClustering(actions_1, n_clusters_1, seq_length, norm_method, train_paths, model_path)
+        actions_2 = ["A004", "A005", "A006"]
+        n_clusters_2 = 9
+        self.kmeans_2 = KMeansClustering(actions_2, n_clusters_2, seq_length, norm_method, train_paths, model_path)
+        actions_3 = ["A004", "A005", "A008"]
+        n_clusters_3 = 7
+        self.kmeans_3 = KMeansClustering(actions_3, n_clusters_3, seq_length, norm_method, train_paths, model_path)
+        # print('K-means models are loaded.')
+
         # load data from files
         self.data_path = data_path
+        self.data_name = data_name
         self.file_names = list()
-        for action in ACTIONS:
-            self.file_names.extend(glob.glob(os.path.join(self.data_path, f"*{action}*.npz")))
-        print(f'Data loading. Total {len(self.file_names)} files.')
+        if data_name is not None:
+            self.file_names.append(os.path.join(self.data_path, self.data_name))
+        else:
+            for action in ACTIONS:
+                self.file_names.extend(glob.glob(os.path.join(self.data_path, f"*{action}*.npz")))
+        print(f'Data loading... ({data_path})')
+        print(f'Total {len(self.file_names)} files.')
 
         self.human_data = list()
         self.robot_data = list()
         self.third_data = list()
+        step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
         for file in self.file_names:
             with np.load(file, allow_pickle=True) as data:
-                self.human_data.append([norm_features(human, norm_method) for human in data['human_info']])
-                self.robot_data.append([norm_features(robot, norm_method) for robot in data['robot_info']])
-                self.third_data.append(data['third_info'])
+                self.human_data.append([norm_features(human, norm_method) for human in data['human_info']][::step])
+                self.robot_data.append([norm_features(robot, norm_method) for robot in data['robot_info']][::step])
+                self.third_data.append(data['third_info'][::step])
 
         # extract training data
         self.dim_input = dim_input
@@ -51,30 +70,45 @@ class AIRDataSet(data.Dataset):
 
         self.inputs = list()
         self.outputs = list()
-        step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
         seq_length = self.dim_input[0]
+        pbar = tqdm(total=len(self.third_data))
         for idx, third in enumerate(self.third_data):
             if all(v == 1.0 for v in third):
                 continue
-
-            sampled_human_seq = self.human_data[idx][::step]
-            sampled_third_seq = self.third_data[idx][::step]
-            for human_seq, third_seq in zip(gen_sequence(sampled_human_seq, seq_length),
-                                            gen_sequence(sampled_third_seq, seq_length)):
-                self.inputs.append(np.concatenate((third_seq, human_seq), axis=1))
+            for human_seq, third_seq in zip(gen_sequence(self.human_data[idx], seq_length),
+                                            gen_sequence(self.third_data[idx], seq_length)):
+                seq = np.concatenate((third_seq, human_seq), axis=1)
+                self.inputs.append(seq)
                 action_name = [action for action in ACTIONS if action in self.file_names[idx]][0]
-                cur_action = ACTIONS.index(action_name)
+                cur_action = self.recog_subaction(seq, action_name)
                 self.outputs.append(cur_action)
 
-            # sampled_robot_seq = self.robot_data[idx][::step]  # 나중에 사용할 예정
+            pbar.update(1)
+        pbar.close()
         # self.inputs = np.round(self.inputs, 3)
-        print('Data extracted.')
 
     def __len__(self):
         return len(self.inputs)
 
     def __getitem__(self, item):
         return self.inputs[item].astype("float32"), self.outputs[item]
+
+    def recog_subaction(self, sequence, action):
+        if action == 'A001' or action == 'A004':
+            kmeans = self.kmeans_1
+            sub_action_mapping = {0: 1, 1: 0, 2: 2, 3: 3}
+        elif action == 'A005' or action == 'A006':
+            kmeans = self.kmeans_2
+            sub_action_mapping = {0: 0, 1: 8, 2: 4, 3: 7, 4: 11, 5: 5, 6: 9, 7: 6, 8: 10}
+        elif action == 'A008':
+            kmeans = self.kmeans_3
+            sub_action_mapping = {0: 0, 1: 5, 2: 6, 3: 12, 4: 10, 5: 4, 6: 13}
+        else:
+            raise Exception(f'Wrong action name: {action}')
+
+        df = kmeans.make_dataframe([sequence], len(sequence))
+        sub_action = kmeans.km_model.predict(df)[0]
+        return sub_action_mapping[sub_action]
 
     def add_random_noise(self):
         pass

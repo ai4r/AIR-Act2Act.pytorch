@@ -1,301 +1,206 @@
+# -*- coding: utf-8 -*-
 import os
 import glob
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import pickle
-from tqdm import tqdm
-from sklearn.cluster import KMeans
-from sklearn import metrics
-from scipy.spatial.distance import cdist
+import random
 
-from utils.AIR import norm_features, denorm_features
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.utils.data as data
+
+from model import Act2Act
+from data import AIRDataSet, ACTIONS, N_SUB_ACTIONS, norm_method
+from utils.AIR import denorm_features
 from utils.draw import draw
-from data import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
-
-train_path = './data files/train data'
-test_path = './data files/valid data'
-model_path = './models/k-means'
-
-# skeleton feature normalization
-norm_method = 'vector'
-
-# 알맞은 k값 넣기
-N_CLUSTERS = [3, 3, 3, 5, 3, 4, 4, 4, 5, 3]
-SEQ_LENGTH = 15
 
 
-# k-means clustering 결과값 그래프로 확인하기
-def draw_plots(km_values):
-    plt.rcParams["figure.figsize"] = (500, 10)
-    plt.rcParams['lines.linewidth'] = 10
-    plt.rcParams['lines.color'] = 'r'
-    plt.rcParams['axes.grid'] = True
-    for i in range(0, len(km_values), 500):
-        plt.plot(km_values[i:i+500])
-        plt.show()
+# define model parameters
+lstm_input_length = 15
+lstm_input_size = 25
+batch_size = 64
+hidden_size = 1024
+output_dim = N_SUB_ACTIONS
+learning_rate = 0.01
+num_epochs = 200
+save_epochs = 10
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# define LSTM model
+model = Act2Act(device, lstm_input_size, hidden_size, output_dim)
+model.to(device)
+
+# model and data path
+MODEL_PATH = os.path.join('./models/lstm', norm_method)
+if not os.path.exists(MODEL_PATH):
+    os.makedirs(MODEL_PATH)
+TRAIN_PATH = './data files/train data'
+TEST_PATH = './data files/valid data'
 
 
-def make_null_dataframe(input_length):
-    # feature 이름 생성
-    # fAd == 해당 시퀀스의 frame A번째의 사람과 로봇사이 distance
-    # fAjB == 해당 시퀀스의 frame A번째의 B번째 joint
-    feature_name = [F"f{a}d" for a in range(input_length)]  # f0d ~ f19d
-    feature_name.extend(
-        [F"f{a}j{b+1}" for a in range(input_length) for b in range(24)])  # f0j1 ~ f0j24, f1j1 ~ f1j24, ...
+def train():
+    loss_function = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    return pd.DataFrame(columns=feature_name)
+    # load data set
+    train_dataset = AIRDataSet(data_path=TRAIN_PATH,
+                               dim_input=(lstm_input_length, lstm_input_size),
+                               dim_output=(output_dim, 1))
+    valid_dataset = AIRDataSet(data_path=TEST_PATH,
+                               dim_input=(lstm_input_length, lstm_input_size),
+                               dim_output=(output_dim, 1))
+    train_data_loader = data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
+    valid_data_loader = data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
+    # training
+    for epoch in range(1, num_epochs + 1):
+        train_loss = 0.0
+        train_acc = 0.0
+        for train_inputs, train_outputs in train_data_loader:
+            model.zero_grad()
 
-# 학습할 수 있는 DataFrame 형식으로 만들기
-def make_dataframe(inputs, input_length):
-    df = make_null_dataframe(input_length)
-    # pbar = tqdm(total=len(inputs))
-    for i, a in enumerate(inputs):  # 파일들에 대해
-        temp = dict()
-        for j, b in enumerate(a):  # 20frame짜리 시퀀스에 대해
-            for k, c in enumerate(b):  # 프레임에 대해
-                if k == 0:
-                    temp[F"f{j}d"] = c  # 프레임의 거리정보
-                else:
-                    temp[F"f{j}j{k}"] = c
-        df = df.append(temp, ignore_index=True)
-        # pbar.update(1)
-    # pbar.close()
+            train_inputs = train_inputs.to(device)
+            train_outputs = train_outputs.to(device)
 
-    # 새로운 분산 feature 추가.  vj0 == 해당 시퀀스의 첫번째 frame과 마지막 frame에서 0번째 joint의 차이
-    for i in range(20):
-        df[F"vj{i}"] = df[F"f0j{i+1}"] - df[F"f{input_length-1}j{i+1}"]
+            train_scores = model(train_inputs)
+            train_predictions = torch.argmax(train_scores, dim=1)
+            acc = (train_predictions == train_outputs).float().mean()
+            train_acc += acc.item()
 
-    return df
+            loss = loss_function(train_scores, train_outputs)
+            train_loss += loss.item()
 
+            loss.backward()
+            optimizer.step()
 
-def preprocessing(input_length, file_names):
-    human_data = list()
-    robot_data = list()
-    third_data = list()
+        # validation
+        if epoch % save_epochs == 0:
+            valid_loss = 0.0
+            valid_acc = 0.0
+            with torch.no_grad():
+                for valid_inputs, valid_outputs in valid_data_loader:
+                    valid_inputs = valid_inputs.to(device)
+                    valid_outputs = valid_outputs.to(device)
 
-    pbar = tqdm(total=len(file_names))
-    for file in file_names:
-        with np.load(file, allow_pickle=True) as data:
-            human_data.append([norm_features(human, norm_method) for human in data['human_info']])
-            robot_data.append([norm_features(robot, norm_method) for robot in data['robot_info']])
-            third_data.append(data['third_info'])
-        pbar.update(1)
-    pbar.close()
+                    valid_scores = model(valid_inputs)
+                    valid_predictions = torch.argmax(valid_scores, dim=1)
+                    acc = (valid_predictions == valid_outputs).float().mean()
+                    valid_acc += acc.item()
 
-    step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
-    inputs = list()
-    for idx, third in enumerate(third_data):
-        if all(v == 1.0 for v in third):
-            continue
+                    loss = loss_function(valid_scores, valid_outputs)
+                    valid_loss += loss.item()
 
-        sampled_human_seq = human_data[idx][::step]
-        sampled_third_seq = third_data[idx][::step]
-        for human_seq, third_seq in zip(gen_sequence(sampled_human_seq, input_length),
-                                        gen_sequence(sampled_third_seq, input_length)):
-            inputs.append(np.concatenate((third_seq, human_seq), axis=1))
-
-    return make_dataframe(inputs, input_length)
-
-
-# DataFrame에서 null값이 있는 column들의 리스트를 반환합니다.
-def check_null(df):
-    col_list = []
-    for col in df.columns:
-        if df[col].isnull().values.any():
-            col_list.append(col)
-    return col_list
-
-
-def train(actions, n_clusters):
-    # 모든 action에 대해 테이터를 모으기
-    train, test = make_null_dataframe(SEQ_LENGTH), make_null_dataframe(SEQ_LENGTH)
-    for action in actions:
-        print(F"\nAction: {action}")
-        train_files = glob.glob(os.path.join(train_path, f"*{action}*.npz"))
-        print(f'Train data loading. Total {len(train_files)} files.')
-        test_files = glob.glob(os.path.join(test_path, f"*{action}*.npz"))
-        print(f'Test data loading. Total {len(test_files)} files.')
-
-        print('\nPreprocessing...')
-        train = train.append(preprocessing(SEQ_LENGTH, train_files), ignore_index=True, sort=False)
-        test = test.append(preprocessing(SEQ_LENGTH, test_files), ignore_index=True, sort=False)
-
-    # 전체 데이터를 보기 위해서 train, test set 합침
-    train = pd.concat([train, test], axis=0)
-
-    # N_CLUSTERS를 얼마로 하면 될지 찾기
-    # get_kmeans_insight(train)
-
-    # null값 있는지 체크
-    #     if( len(check_null(train)) == 0 and check_null(test) == 0 ):
-    #         print("null value existed")
-    #         break
-
-    print('\nK-means clustering...')
-    km = KMeans(n_clusters=n_clusters, random_state=2020)
-    km.fit(train)
-
-    # 결과값 그래프 그리기
-    #     print(F"{act}의 train")
-    #     draw_plots(km.labels_)
-
-    #     print(F"{act}의 test")
-    #     draw_plots(km.predict(test))
-
-    # 학습한 model save
-    if not os.path.exists(model_path):
-        os.makedirs(model_path)
-    with open(F"{model_path}/{''.join(actions)}_full_{n_clusters}_cluster.pkl", "wb") as f:
-        pickle.dump(km, f)
-    print('Model saved.')
-
-
-def get_kmeans_insight(df):
-    plt.rcParams["figure.figsize"] = (10, 10)
-    plt.rcParams['lines.linewidth'] = 10
-    plt.rcParams['lines.color'] = 'r'
-    plt.rcParams['axes.grid'] = True
-    distortions = []
-    ks = range(10, 20)
-    for k in ks:
-        km_model = KMeans(n_clusters=k, random_state=2020).fit(df)
-        distortions.append(sum(np.min(cdist(df, km_model.cluster_centers_, 'euclidean'), axis=1)) / df.shape[0])
-        cluster_labels = km_model.labels_
-        if k != 1:
-            # silhouette score
-            silhouette_avg = metrics.silhouette_score(df, cluster_labels)
-            print("For n_clusters={0}, the silhouette score is {1}".format(k, silhouette_avg))
-    # Plot the elbow
-    plt.plot(ks, distortions, 'bx-')
-    plt.xlabel('k')
-    plt.ylabel('Result')
-    plt.title('The Elbow Method showing the optimal k')
-    plt.show()
+            # Print average training/validation loss and accuracy
+            print(f"Epoch {epoch}")
+            print(f"Training Loss: {train_loss / len(train_data_loader):.5f}, "
+                  f"Training Acc: {train_acc / len(train_data_loader):.5f}")
+            print(f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}, "
+                  f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
+            model_path = os.path.join(MODEL_PATH, f"model_{epoch:04d}.pth")
+            torch.save(model.state_dict(), model_path)
 
 
 def test():
-    # 보고싶은 액션 입력
-    # actions = ["A001", "A004"]
-    # n_clusters = 4
+    # train model if not exists
+    model_files = glob.glob(os.path.join(MODEL_PATH, "*.pth"))
+    if len(model_files) == 0:
+        train()
 
-    # actions = ["A004", "A005", "A006"]
-    # n_clusters = 9
+    # show all existing models
+    model_names = list()
+    for model_file in model_files:
+        model_name, _ = os.path.splitext(os.path.basename(model_file))
+        model_names.append(model_name)
+    print(f'There are {len(model_files)} models ({model_names[0]} ~ {model_names[-1]}).')
 
-    actions = ["A004", "A005", "A008"]
-    n_clusters = 7
+    # select model to test
+    while True:
+        model_num = input(f"Input model number to test ({model_names[0][6:]} ~ {model_names[-1][6:]}): ")
+        model_num = int(model_num)
+        selected_model = os.path.join(MODEL_PATH, f"model_{model_num:04d}.pth")
+        if os.path.exists(selected_model):
+            print("Load model: ", selected_model)
+            model.load_state_dict(torch.load(selected_model))
+            break
+        print("Model number is wrong.")
 
-    model_file = os.path.join(model_path, f"{''.join(actions)}_full_{n_clusters}_cluster.pkl")
-    if not os.path.exists(model_file):
-        train(actions, n_clusters)
-    km_model = pickle.load(open(model_file, "rb"))
-
-    # show all test data
+    # load test data
     data_files = list()
-    for action in actions:
-        data_files.extend(glob.glob(os.path.join(test_path, F"*{action}*.npz")))
-    data_files.sort()
-    n_data = len(data_files)
+    for action in ACTIONS:
+        data_files.extend(glob.glob(os.path.join(TEST_PATH, f"*{action}*.npz")))
+    random.shuffle(data_files)
+    print(f'There are {len(data_files)} data.')
+    for idx in range(min(len(data_files), 20)):
+        data_file = os.path.basename(data_files[idx])
+        data_name, _ = os.path.splitext(data_file)
+        print(f'{idx}: {data_name}')
 
-    print('There are %d data.' % n_data)
-    for data_idx in range(n_data):
-        print('%d: %s' % (data_idx, os.path.basename(data_files[data_idx])))
-
-    # select data name to draw
+    # select data to test
     while True:
         var = int(input("Input data number to display: "))
-    # for var in range(n_data):
-        data_file = data_files[var]
+        test_file = data_files[var]
+        print(os.path.normpath(test_file))
 
-        with np.load(data_file, allow_pickle=True) as data:
-            print(os.path.basename(data_file))
+        test_dataset = AIRDataSet(data_path=TEST_PATH,
+                                  data_name=os.path.basename(test_file),
+                                  dim_input=(lstm_input_length, lstm_input_size),
+                                  dim_output=(output_dim, 1))
 
-            human_data = [norm_features(human, norm_method) for human in data['human_info']]
-            third_data = data['third_info']
+        # prediction results
+        outputs = list()
+        predictions = list()
+        for idx, inputs in enumerate(test_dataset.inputs):
+            input_batch = torch.FloatTensor([inputs]).to(device)
+            scores = model(input_batch)
+            prediction = torch.argmax(scores, dim=1)
+            predictions.append(prediction.item())
+            outputs.append(test_dataset.outputs[idx])
+        print("true: ", outputs)
+        print("pred: ", predictions)
 
-            sampled_human_data = human_data[::3]
-            sampled_third_data = third_data[::3]
-
-            # recognize sub-action
-            predictions = list()
-            for human_seq, third_seq in zip(gen_sequence(sampled_human_data, SEQ_LENGTH),
-                                            gen_sequence(sampled_third_data, SEQ_LENGTH)):
-                seq = np.concatenate((third_seq, human_seq), axis=1)
-                df = make_dataframe([seq], SEQ_LENGTH)
-                sub_action = km_model.predict(df)
-                predictions.append(sub_action[0])
-            print(predictions)
-
-            # draw results
-            features = list()
-            for f in range(len(sampled_human_data)):
-                cur_features = sampled_human_data[f]
-                cur_features = denorm_features(cur_features, norm_method)
-                features.append(cur_features)
-            predictions = ["None"] * (SEQ_LENGTH - 1) + predictions
-            draw([features], [predictions], save_path=None, b_show=True)
+        # draw results
+        features = list()
+        for f in range(len(test_dataset.human_data[0])):
+            cur_features = test_dataset.human_data[0][f]
+            cur_features = denorm_features(cur_features, norm_method)
+            features.append(cur_features)
+        predictions = ["None"] * (lstm_input_length - 1) + predictions
+        draw([features], [predictions], save_path=None, b_show=True)
 
 
-def test2():
-    actions_1 = ["A001", "A004"]
-    n_clusters_1 = 4
-    model_file_1 = os.path.join(model_path, f"{''.join(actions_1)}_full_{n_clusters_1}_cluster.pkl")
-    km_model_1 = pickle.load(open(model_file_1, "rb"))
+def validate_models():
+    # load test data
+    valid_dataset = AIRDataSet(data_path=TEST_PATH,
+                               dim_input=(lstm_input_length, lstm_input_size),
+                               dim_output=(output_dim, 1))
+    valid_data_loader = data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
-    actions_2 = ["A004", "A005", "A006"]
-    n_clusters_2 = 9
-    model_file_2 = os.path.join(model_path, f"{''.join(actions_2)}_full_{n_clusters_2}_cluster.pkl")
-    km_model_2 = pickle.load(open(model_file_2, "rb"))
+    # validate all existing models
+    loss_function = nn.CrossEntropyLoss()
+    model_files = glob.glob(os.path.join(MODEL_PATH, "*.pth"))
+    for model_file in model_files:
+        model.load_state_dict(torch.load(model_file))
 
-    actions_3 = ["A004", "A005", "A008"]
-    n_clusters_3 = 7
-    model_file_3 = os.path.join(model_path, f"{''.join(actions_3)}_full_{n_clusters_3}_cluster.pkl")
-    km_model_3 = pickle.load(open(model_file_3, "rb"))
+        valid_loss = 0.0
+        valid_acc = 0.0
+        with torch.no_grad():
+            for valid_inputs, valid_outputs in valid_data_loader:
+                valid_inputs = valid_inputs.to(device)
+                valid_outputs = valid_outputs.to(device)
 
-    actions = ["A005"]
+                valid_scores = model(valid_inputs)
+                valid_predictions = torch.argmax(valid_scores, dim=1)
+                acc = (valid_predictions == valid_outputs).float().mean()
+                valid_acc += acc.item()
 
-    # show all test data
-    data_files = list()
-    for action in actions:
-        data_files.extend(glob.glob(os.path.join(test_path, F"*{action}*.npz")))
-    data_files.sort()
-    n_data = len(data_files)
+                loss = loss_function(valid_scores, valid_outputs)
+                valid_loss += loss.item()
 
-    print('There are %d data.' % n_data)
-    for data_idx in range(n_data):
-        print('%d: %s' % (data_idx, os.path.basename(data_files[data_idx])))
-
-    # select data name to predict
-    for var in range(n_data):
-        data_file = data_files[var]
-
-        with np.load(data_file, allow_pickle=True) as data:
-            print(os.path.basename(data_file))
-
-            human_data = [norm_features(human, norm_method) for human in data['human_info']]
-            third_data = data['third_info']
-
-            sampled_human_data = human_data[::3]
-            sampled_third_data = third_data[::3]
-
-            # recognize sub-action
-            predictions_1 = list()
-            predictions_2 = list()
-            predictions_3 = list()
-            for human_seq, third_seq in zip(gen_sequence(sampled_human_data, SEQ_LENGTH),
-                                            gen_sequence(sampled_third_data, SEQ_LENGTH)):
-                seq = np.concatenate((third_seq, human_seq), axis=1)
-                df = make_dataframe([seq], SEQ_LENGTH)
-                # predictions_1.append(km_model_1.predict(df)[0])
-                predictions_2.append(km_model_2.predict(df)[0])
-                predictions_3.append(km_model_3.predict(df)[0])
-
-            # print(predictions_1)
-            print(predictions_2)
-            print(predictions_3)
+        # Print average training/validation loss and accuracy
+        print(f"{os.path.basename(model_file)}")
+        print(f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}, "
+              f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
 
 
-if "__main__" == __name__:
+if __name__ == '__main__':
     test()
-    # test2()
+    # validate_models()
