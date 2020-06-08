@@ -12,6 +12,7 @@ from tqdm import tqdm
 from utils.AIR import norm_features
 from k_clustering import KMeansClustering
 from constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
+from constants import sub_action_mapping_1, sub_action_mapping_2, sub_action_mapping_3
 
 # skeleton feature normalization
 norm_method = 'vector'
@@ -19,7 +20,6 @@ norm_method = 'vector'
 # other parameters
 # ACTIONS = ["A%03d" % a for a in range(1, 11)]
 ACTIONS = ['A001', 'A004', 'A005', 'A006', 'A008']
-N_SUB_ACTIONS = 14
 
 
 class AIRDataSet(data.Dataset):
@@ -96,13 +96,13 @@ class AIRDataSet(data.Dataset):
     def recog_subaction(self, sequence, action):
         if action == 'A001' or action == 'A004':
             kmeans = self.kmeans_1
-            sub_action_mapping = {0: 1, 1: 0, 2: 2, 3: 3}
+            sub_action_mapping = sub_action_mapping_1
         elif action == 'A005' or action == 'A006':
             kmeans = self.kmeans_2
-            sub_action_mapping = {0: 0, 1: 8, 2: 4, 3: 7, 4: 11, 5: 5, 6: 9, 7: 6, 8: 10}
+            sub_action_mapping = sub_action_mapping_2
         elif action == 'A008':
             kmeans = self.kmeans_3
-            sub_action_mapping = {0: 0, 1: 5, 2: 6, 3: 12, 4: 10, 5: 4, 6: 13}
+            sub_action_mapping = sub_action_mapping_3
         else:
             raise Exception(f'Wrong action name: {action}')
 

@@ -9,6 +9,7 @@ from sklearn.cluster import KMeans
 from utils.AIR import norm_features, denorm_features
 from utils.draw import draw
 from constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
+from constants import SUBACTION_NAMES, sub_action_mapping_1, sub_action_mapping_2, sub_action_mapping_3
 
 
 class KMeansClustering:
@@ -109,14 +110,14 @@ class KMeansClustering:
 
 def test():
     # 보고싶은 액션 입력
-    # actions = ["A001", "A004"]
-    # n_clusters = 4
+    actions = ["A001", "A004"]
+    n_clusters = 4
 
     # actions = ["A004", "A005", "A006"]
     # n_clusters = 9
 
-    actions = ["A004", "A005", "A008"]
-    n_clusters = 7
+    # actions = ["A004", "A005", "A008"]
+    # n_clusters = 7
 
     # parameters
     seq_length = 15
@@ -148,6 +149,14 @@ def test():
 
         with np.load(data_file, allow_pickle=True) as data:
             print(os.path.basename(data_file))
+            action = os.path.basename(data_file)[4:8]
+
+            if action == 'A001' or action == 'A004':
+                sub_action_mapping = sub_action_mapping_1
+            elif action == 'A005' or action == 'A006':
+                sub_action_mapping = sub_action_mapping_2
+            elif action == 'A008':
+                sub_action_mapping = sub_action_mapping_3
 
             human_data = [norm_features(human, norm_method) for human in data['human_info']]
             third_data = data['third_info']
@@ -171,7 +180,8 @@ def test():
                 cur_features = sampled_human_data[f]
                 cur_features = denorm_features(cur_features, norm_method)
                 features.append(cur_features)
-            predictions = ["None"] * (seq_length - 1) + predictions
+            names = [SUBACTION_NAMES[sub_action_mapping[pred]] for pred in predictions]
+            predictions = ["None"] * (seq_length - 1) + names
             draw([features], [predictions], save_path=None, b_show=True)
 
 

@@ -2,6 +2,8 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+plt.rc('font', family='NanumGothic')
+
 
 def draw(features, results, save_path=None, b_show=False):
     fig = plt.figure()
@@ -27,9 +29,8 @@ def animate_3d(f, features, results, axes):
         ret_artists.extend(draw_parts(axes[idx], [neck, lshoulder, lelbow, lwrist]))
         ret_artists.extend(draw_parts(axes[idx], [neck, rshoulder, relbow, rwrist]))
 
-        if results is not None:
-            ret_artists.append(axes[idx].text(0, 0, 0, F"{results[idx][f]}\n{f+1}/{len(features[idx])}",
-                                              fontsize=40))
+        result = results[idx][f] if results is not None else ''
+        ret_artists.append(axes[idx].text(0, 0, 0, F"{result}\n{f+1}/{len(features[idx])}", fontsize=40))
 
     return ret_artists
 
@@ -42,7 +43,7 @@ def init_axis(ax):
     ax.set_zlabel('z')
 
     max = 2.
-    ax.set_xlim3d(-max, max)
+    ax.set_xlim3d(-max * 0.7, max * 0.7)
     ax.set_ylim3d(0, 2 * max)
     ax.set_zlim3d(-max, max)
 

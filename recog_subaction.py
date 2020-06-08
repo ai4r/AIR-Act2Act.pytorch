@@ -9,9 +9,10 @@ import torch.optim as optim
 import torch.utils.data as data
 
 from model import Act2Act
-from data import AIRDataSet, ACTIONS, N_SUB_ACTIONS, norm_method
+from data import AIRDataSet, ACTIONS, norm_method
 from utils.AIR import denorm_features
 from utils.draw import draw
+from constants import SUBACTION_NAMES
 
 
 # define model parameters
@@ -19,7 +20,7 @@ lstm_input_length = 15
 lstm_input_size = 25
 batch_size = 64
 hidden_size = 1024
-output_dim = N_SUB_ACTIONS
+output_dim = len(SUBACTION_NAMES)
 learning_rate = 0.01
 num_epochs = 200
 save_epochs = 10
@@ -163,7 +164,7 @@ def test():
             cur_features = test_dataset.human_data[0][f]
             cur_features = denorm_features(cur_features, norm_method)
             features.append(cur_features)
-        predictions = ["None"] * (lstm_input_length - 1) + predictions
+        predictions = ["None"] * (lstm_input_length - 1) + [SUBACTION_NAMES[pred] for pred in predictions]
         draw([features], [predictions], save_path=None, b_show=True)
 
 
