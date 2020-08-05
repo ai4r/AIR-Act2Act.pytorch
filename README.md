@@ -34,13 +34,13 @@ A pytorch implementation of AIR-Act2Act.
 
 ## Overall system
   
-<img src="https://user-images.githubusercontent.com/13827622/89387344-50651480-d73d-11ea-98c5-d32dc093d07c.png" width="75%">
+<img src="https://user-images.githubusercontent.com/13827622/89387344-50651480-d73d-11ea-98c5-d32dc093d07c.png" width="70%">
 
 ## User recognition
 
 ### LSTM-based model
 
-<img src="https://user-images.githubusercontent.com/13827622/89415107-63400f00-d766-11ea-9008-6634fb496087.png" width="65%">
+<img src="https://user-images.githubusercontent.com/13827622/89415107-63400f00-d766-11ea-9008-6634fb496087.png" width="60%">
 
 ### How to train
 
