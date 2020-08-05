@@ -2,7 +2,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-plt.rc('font', family='NanumGothic')
+# plt.rc('font', family='NanumGothic')
 
 
 def draw(features, results, save_path=None, b_show=False):

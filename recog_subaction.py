@@ -2,6 +2,7 @@
 import os
 import glob
 import random
+import argparse
 
 import torch
 import torch.nn as nn
@@ -14,6 +15,10 @@ from utils.AIR import denorm_features
 from utils.draw import draw
 from constants import SUBACTION_NAMES
 
+# argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('--mode', type=str, help='mode to run ', choices=['train', 'test', 'validate'])
+args = parser.parse_args()
 
 # define model parameters
 lstm_input_length = 15
@@ -111,11 +116,13 @@ def test():
     for model_file in model_files:
         model_name, _ = os.path.splitext(os.path.basename(model_file))
         model_names.append(model_name)
-    print(f'There are {len(model_files)} models ({model_names[0]} ~ {model_names[-1]}).')
+    print(f'There are {len(model_files)} models.')
+    for i in range(len(model_files)):
+        print(model_names[i])
 
     # select model to test
     while True:
-        model_num = input(f"Input model number to test ({model_names[0][6:]} ~ {model_names[-1][6:]}): ")
+        model_num = input(f"\nInput model number to test. \nIf you want to load 'model_0010', enter '10':")
         model_num = int(model_num)
         selected_model = os.path.join(MODEL_PATH, f"model_{model_num:04d}.pth")
         if os.path.exists(selected_model):
@@ -129,7 +136,7 @@ def test():
     for action in ACTIONS:
         data_files.extend(glob.glob(os.path.join(TEST_PATH, f"*{action}*.npz")))
     random.shuffle(data_files)
-    print(f'There are {len(data_files)} data.')
+    print(f'\nThere are {len(data_files)} data.')
     for idx in range(min(len(data_files), 20)):
         data_file = os.path.basename(data_files[idx])
         data_name, _ = os.path.splitext(data_file)
@@ -155,8 +162,8 @@ def test():
             prediction = torch.argmax(scores, dim=1)
             predictions.append(prediction.item())
             outputs.append(test_dataset.outputs[idx])
-        print("true: ", outputs)
-        print("pred: ", predictions)
+        print("true: \n", outputs)
+        print("pred: \n", predictions)
 
         # draw results
         features = list()
@@ -202,6 +209,14 @@ def validate_models():
               f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
 
 
+def main():
+    if args.mode == "train":
+        train()
+    elif args.mode == "test":
+        test()
+    elif args.mode == "validate":
+        validate_models()
+
+
 if __name__ == '__main__':
-    test()
-    # validate_models()
+    main()
