@@ -134,7 +134,7 @@ def animate_3d(f, features, results, ax, cmd_sock):
     ret_artists.extend(draw_parts(ax, [neck, rshoulder, relbow, rwrist]))
 
     result = "None" if results[f] == "None" else SUBACTION_NAMES[results[f]]
-    ret_artists.append(ax.text(0, 0, 0, F"{result}\n{f+1}/{len(features)}", fontsize=25))
+    ret_artists.append(ax.text(0, 0, 0, F"{result}\n{f+1}/{len(features)}", fontsize=20))
 
     # send behavior to client
     if f == 0 or f == 1:

@@ -3,10 +3,11 @@ A pytorch implementation of AIR-Act2Act.
 
 
 ## Overall system of the AIR-Act2Act
-For user recognition, a Kinect sensor captures the user’s 3D joint positions through skeletal tracking.  
-Then, the user's behavior is classified by a deep neural network (DNN) based on the sequence of captured joint data.  
-The robot's behavior that responds appropriately to the user's behavior is selected according to the predefined rules.  
-Finally, the selected behavior is modified according to the user's posture, position and height.  
+A Kinect sensor captures the user’s 3D joint positions through skeletal tracking.  
+Then, the user's behavior is recognized using a deep neural network (DNN).  
+The robot's behavior that responds appropriately to the user's behavior   
+is selected according to the predefined rules.  
+Finally, the selected behavior is modified according to the user's posture.  
 
 <img src="https://user-images.githubusercontent.com/13827622/89387344-50651480-d73d-11ea-98c5-d32dc093d07c.png" width="70%">
 
@@ -18,7 +19,7 @@ Finally, the selected behavior is modified according to the user's posture, posi
     ├── models/                     # Path to save the trained models
     │   └── k-means/                # K-means clustering models to label the user behavior classes
     ├── server/
-    │   └── server.exe              # Connect to a simulated Pepper robot in Chreographe
+    │   └── server.exe              # Connect to a virtual Pepper robot in Chreographe
     ├── utils/
     │   ├── AIR.py                  # Read AIR-Act2Act data files
     │   ├── draw.py                 # Draw 3D skeletons
@@ -59,16 +60,20 @@ For more information on the AIR-Act2Act dataset, please visit [here](https://ai4
 If you want to use a Kinect camera to test, you need to install [Kinect for Windows SDK 2.0](https://www.microsoft.com/en-us/download/details.aspx?id=44561).    
 Then, install the Pykinect2 and PyGame modules: ```pip install pykinect2 pygame```.  
   
-### To test with a simulated Pepper robot
-(To be updated)
+### To test with a virtual Pepper robot
+If you want to use a virtual Pepper robot, you need to download [Choregraphe](https://www.robotlab.com/choregraphe-download).  
+We recommend to download **Choregraphe for PC** for **NAO V6**.  
+After installing Choregraphe, launch it.  
+Then, cilck [Edit] - [Preferences] - [Virtual Robot] and select Pepper for Robot model.  
+You need to remember the port number written at the bottom.  
 
 
 ## User recognition
 
 ### LSTM-based model
 To recognize the user's behavior, we use a long short-term memory (LSTM) based model.  
-It is a popular model in sequential data understanding and makes a great success.  
-The input of the LSTM is set to a sequence of feature vectors of user poses.  
+The LSTM is a popular model in sequential data understanding and makes a great success.  
+The input is set to a sequence of feature vectors of user poses.  
 The output is set to a one-hot vector of behavior class label.  
 The user recognition is performed at 10 fps. 
 
@@ -80,11 +85,10 @@ The user recognition is performed at 10 fps.
 3. Run ```python recog_subaction.py -m train``` to train the model.  
 All trained models are stored in 'models/lstm/'
 
-### How to test
-1. If you want to test with the data extracted from AIR-Act2Act,  
-run ```python recog_subaction.py -m test```.  
-Then, you need to enter the model number and data number to test, into the command line.  
-The recognition results will be printed as follows:  
+### How to test with AIR-Act2Act data
+1. Run ```python recog_subaction.py -m test```.  
+2. Enter the model number and data number to test, into the command line.  
+3. The recognition results will be printed as follows:    
     ```  
     true:  
     [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]  
@@ -92,8 +96,9 @@ The recognition results will be printed as follows:
     [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]  
     ```  
     
-2. If you want to test with a Kinect camera, run ```python demo.py -m recognize```.  
-The captured video will be displayed on a pop-up window.  
+### How to test with a Kinect camera
+1. Run ```python demo.py -m recognize```.  
+2. The captured video will be displayed on a pop-up window.  
 The recognized user behavior will be printed on the command line as follows:
     ```  
     stand  
@@ -109,11 +114,11 @@ The recognized user behavior will be printed on the command line as follows:
 
 ## Robot behavior generation
 
-### How to test
-1. If you want to test with AIR-Act2Act data, run ```python gen_behavior.py -m test```.  
-You may select the trained model as ```python gen_behavior.py -m test -l 10```.  
-Then, enter the data number to test into the command line.   
-The input user behavior will be displayed on a pop-up window.  
+### How to test with AIR-Act2Act data
+1. Run ```python gen_behavior.py -m test```.  
+2. Select the trained model as ```python gen_behavior.py -m test -l 10```.  
+3. Enter the data number to test into the command line.   
+4. The input user behavior will be displayed on a pop-up window.  
 The selected robot behavior will be printed on the command line as follows:  
     ```  
     stand  
@@ -126,11 +131,16 @@ The selected robot behavior will be printed on the command line as follows:
     ```  
     Note: this test does not include the robot behavior adaptation.  
 
-2. If you want to test with AIR-Act2Act data and a simulated Pepper robot,  
-(To be updated)
+### How to test with AIR-Act2Act data and virtual Pepper robot
+1. Launch Choregraphe and connect to a virtual Pepper robot.  
+2. To send commands to Choregraphe, open command prompt and run server:  
+```server/server.exe -p {port number}```  
+3. Open an other command prompt, run ```python gen_behavior.py -m test_pepper```.  
+4. The input user behavior will be displayed on a pop-up window.  
+The selected robot behavior will be generated by a virtual pepper in Choregraphe.  
 
-3. If you want to test with a Kinect camera and a simulated Pepper robot,  
-(To be updated)
+### How to test with Kinect camera and virtual Pepper robot
+1. (To be updated)
 
 
 ## Contact
