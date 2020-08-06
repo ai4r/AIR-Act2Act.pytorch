@@ -1,9 +1,11 @@
 # AIR-Act2Act.pytorch
 A pytorch implementation of AIR-Act2Act.
 
+
 ## Setting 
 -   Python = 3.6.10     
 -   Pytorch = 0.4.1    
+
 
 ## Source files
     .
@@ -31,15 +33,18 @@ A pytorch implementation of AIR-Act2Act.
     ├── preprocess.py               # Generate training and test data
     └── recog_subaction.py          # Train and test the DNN for user behavior recognition
 
+
 ## Overall system
   
 <img src="https://user-images.githubusercontent.com/13827622/89387344-50651480-d73d-11ea-98c5-d32dc093d07c.png" width="70%">
 
+
 ## User recognition
+The user behavior recognition is performed at 10 fps. 
 
 ### LSTM-based model
 
-<img src="https://user-images.githubusercontent.com/13827622/89415107-63400f00-d766-11ea-9008-6634fb496087.png" width="60%">
+<img src="https://user-images.githubusercontent.com/13827622/89415107-63400f00-d766-11ea-9008-6634fb496087.png" width="60%">  
 
 ### How to train
 
@@ -68,14 +73,27 @@ pred:
 You also need Pykinect2 and PyGame: ```pip install pykinect2 pygame```.  
 Then, run ```python demo.py -m recognize```.  
 The captured video will be displayed on a pop-up window.  
-The recognized user behavior will be printed on the command line.
+The recognized user behavior will be printed on the command line as follows:
+```
+stand
+stand
+...
+raise right hand
+raise right hand
+...
+threaten to hit with right hand
+...
+```
+
 
 ## Robot behavior generation
 
 (To be updated)
 
+
 ## Contact
 Please email wrko@etri.re.kr if you have any questions or comments.  
+
 
 ## LICENSE
 This software is a part of AIR, and follows the [AIR License and Service Agreement](LICENSE.md).
