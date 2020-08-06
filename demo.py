@@ -112,15 +112,15 @@ def run_kinect():
                 if len(predictions) == 3:
                     # print(predictions)
                     if predictions == [0, 0, 0] or predictions == [6, 6, 6] or predictions == [10, 10, 10]:
-                        send_behavior(cmd_sock, 'stand')
+                        send_behavior(cmd_sock, 'stand', body)
                     elif predictions == [3, 3, 1] or predictions == [3, 3, 0]:
-                        send_behavior(cmd_sock, 'bow')
+                        send_behavior(cmd_sock, 'bow', body)
                     elif predictions == [4, 4, 4]:
-                        send_behavior(cmd_sock, 'handshake')
+                        send_behavior(cmd_sock, 'handshake', body)
                     elif predictions == [7, 7, 7] or predictions == [9, 9, 9] or predictions == [11, 11, 11]:
-                        send_behavior(cmd_sock, 'hug')
+                        send_behavior(cmd_sock, 'hug', body)
                     elif predictions == [12, 12, 12] or predictions == [13, 13, 13]:
-                        send_behavior(cmd_sock, 'avoid')
+                        send_behavior(cmd_sock, 'avoid', body)
 
 
 def init_socket(HOST, CMD_PORT):
@@ -137,11 +137,33 @@ def init_socket(HOST, CMD_PORT):
     print("Server connected")
 
 
-def send_behavior(cmd_sock, behavior):
+def send_behavior(cmd_sock, behavior, body=None):
     # print(behavior)
-    json_string = json.dumps({'target_angles': POSES[POSE_IDS[behavior]]})
+    if behavior == "hug":
+        shoulder_pos_y = body[20]['y']
+        shoulder_pos_z = body[20]['z']
+        angles = hug_behavior(POSES[POSE_IDS["stand"]], POSES[POSE_IDS["hug"]], shoulder_pos_y, shoulder_pos_z)
+    elif behavior == "handshake":
+        hand_pos_x = body[10]['x']  #wristRight
+        hand_pos_y = body[10]['y']
+        angles = handshake_behavior(POSES[POSE_IDS["handshake"]], hand_pos_x, hand_pos_y)
+    else:
+        angles = POSES[POSE_IDS[behavior]]
+
+    json_string = json.dumps({'target_angles': angles})
     cmd_sock.send(str(len(json_string)).ljust(16).encode('utf-8'))
     cmd_sock.sendall(json_string.encode('utf-8'))
+
+
+# 사용자 어깨 높이를 반영하여 hug behavior 생성
+def hug_behavior(stand_pose, hug_pose, shoulder_pos_y, shoulder_pos_z):
+    head_angle = 20
+    if shoulder_pos_y > -0.7:
+        diff = [a - b for a, b in zip(hug_pose, stand_pose)]
+        final_pose = [a + (shoulder_pos_y + 0.7) * b for a, b in zip(stand_pose, diff)]
+    else:
+        final_pose = stand_pose
+    return final_pose
 
 
 # 사용자 어깨 높이를 반영하여 hug behavior 생성

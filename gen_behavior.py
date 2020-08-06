@@ -3,68 +3,46 @@ import os
 import glob
 import time
 import socket
-import numpy as np
 import simplejson as json
+import argparse
 
 import torch
 from model import Act2Act
 from data import AIRDataSet, ACTIONS, norm_method
-from utils.AIR import norm_features, denorm_features
+from utils.AIR import denorm_features
 from utils.draw import animation, plt, init_axis, draw_parts
-from utils.draw import draw
-from utils.robot import joints_to_nao
 from constants import SUBACTION_NAMES
 from constants import POSE_IDS, POSES
-from constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE
 
 
+# gather all existing models
+MODEL_PATH = './models/lstm/vector'
+model_files = glob.glob(os.path.join(MODEL_PATH, "*.pth"))
+model_numbers = list()
+for model_file in model_files:
+    model_name, _ = os.path.splitext(os.path.basename(model_file))
+    model_numbers.append(int(model_name[6:10]))
+
+# argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('-l', '--model', type=int, help='model number', choices=model_numbers, default=13)
+parser.add_argument('-m', '--mode', type=str, help='mode to run', choices=['test', 'test_pepper'], required=True)
+args = parser.parse_args()
+
+# global variable
+MODEL_FILE = os.path.join(MODEL_PATH, f"model_{args.model:04d}.pth")
 TEST_PATH = './data files/valid data'
-MODEL_FILE = './models/lstm/vector/model_0080.pth'
 
 
-def save_robot_behavior():
-    # print test data
-    action = 'A008'
-    data_files = glob.glob(os.path.join(TEST_PATH, f"*{action}*.npz"))
-    print(f'\nThere are {len(data_files)} data.')
-    for file_idx in range(len(data_files)):
-        data_file = os.path.basename(data_files[file_idx])
-        data_name, _ = os.path.splitext(data_file)
-        print(f'{file_idx}: {data_name}')
-
-    # select data
-    while True:
-        try:
-            var = int(input("Input data number to display: "))
-            test_file = data_files[var]
-        except:
-            continue
-        print(os.path.normpath(test_file))
-
-        step = round(KINECT_FRAME_RATE / TARGET_FRAME_RATE)
-        with np.load(test_file, allow_pickle=True) as data:
-            # draw all robot poses
-            robot_data = [norm_features(robot, norm_method) for robot in data['robot_info']][::step]
-            robot_skel = [denorm_features(features, norm_method) for features in robot_data]
-            draw([robot_skel], None, save_path=None, b_show=True)
-
-            # convert robot pose to angles
-            frame = 26  # set the frame number as you want
-            robot_poses = data['robot_info'][::step]
-            robot_pose = norm_features(robot_poses[frame], 'torso')
-
-            pelvis = np.array([0, 0, 0])
-            joints = np.vstack((pelvis, np.split(np.array(robot_pose), 8)))
-            robot_angles = joints_to_nao(joints)
-            # print(robot_angles)
-
-
-def generate():
+def test():
     # connect to server
-    HOST = "127.0.0.1"
-    CMD_PORT = 10240
-    cmd_sock = init_socket(HOST, CMD_PORT)
-    send_behavior(cmd_sock, 'stand')
+    if args.mode == "test_pepper":
+        HOST = "127.0.0.1"
+        CMD_PORT = 10240
+        cmd_sock = init_socket(HOST, CMD_PORT)
+        send_behavior(cmd_sock, 'stand')
+    else:
+        cmd_sock = None
 
     # define model parameters
     lstm_input_length = 15
@@ -76,13 +54,8 @@ def generate():
     # define LSTM model
     model = Act2Act(device, lstm_input_size, hidden_size, output_dim)
     model.to(device)
-
-    # load lstm model
-    if os.path.exists(MODEL_FILE):
-        print("Load model: ", MODEL_FILE)
-        model.load_state_dict(torch.load(MODEL_FILE))
-    else:
-        raise Exception(f"Model path is wrong: {MODEL_FILE}")
+    print("Load model: ", MODEL_FILE)
+    model.load_state_dict(torch.load(MODEL_FILE))
 
     # load test data
     data_files = list()
@@ -116,8 +89,8 @@ def generate():
             prediction = torch.argmax(scores, dim=1)
             predictions.append(prediction.item())
             outputs.append(test_dataset.outputs[idx])
-        print("true: ", outputs)
-        print("pred: ", predictions)
+        print("true: \n", outputs)
+        print("pred: \n", predictions)
 
         # draw results
         features = list()
@@ -161,7 +134,7 @@ def animate_3d(f, features, results, ax, cmd_sock):
     ret_artists.extend(draw_parts(ax, [neck, rshoulder, relbow, rwrist]))
 
     result = "None" if results[f] == "None" else SUBACTION_NAMES[results[f]]
-    ret_artists.append(ax.text(0, 0, 0, F"{result}\n{f+1}/{len(features)}", fontsize=40))
+    ret_artists.append(ax.text(0, 0, 0, F"{result}\n{f+1}/{len(features)}", fontsize=25))
 
     # send behavior to client
     if f == 0 or f == 1:
@@ -183,11 +156,18 @@ def animate_3d(f, features, results, ax, cmd_sock):
 
 
 def send_behavior(cmd_sock, behavior):
-    json_string = json.dumps({'target_angles': POSES[POSE_IDS[behavior]]})
-    cmd_sock.send(str(len(json_string)).ljust(16).encode('utf-8'))
-    cmd_sock.sendall(json_string.encode('utf-8'))
+    print(behavior)
+    if args.mode == "test_pepper":
+        json_string = json.dumps({'target_angles': POSES[POSE_IDS[behavior]]})
+        cmd_sock.send(str(len(json_string)).ljust(16).encode('utf-8'))
+        cmd_sock.sendall(json_string.encode('utf-8'))
 
+
+def main():
+    print("Model path: ", MODEL_FILE)
+    if not os.path.exists(MODEL_FILE):
+        raise Exception("Cannot load the model.")
+    test()
 
 if __name__ == '__main__':
-    # save_robot_behavior()
-    generate()
+    main()

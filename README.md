@@ -2,9 +2,13 @@
 A pytorch implementation of AIR-Act2Act.
 
 
-## Setting 
--   Python = 3.6.10     
--   Pytorch = 0.4.1    
+## Overall system of the AIR-Act2Act
+For user recognition, a Kinect sensor captures the user’s 3D joint positions through skeletal tracking.  
+Then, the user's behavior is classified by a deep neural network (DNN) based on the sequence of captured joint data.  
+The robot's behavior that responds appropriately to the user's behavior is selected according to the predefined rules.  
+Finally, the selected behavior is modified according to the user's posture, position and height.  
+
+<img src="https://user-images.githubusercontent.com/13827622/89387344-50651480-d73d-11ea-98c5-d32dc093d07c.png" width="70%">
 
 
 ## Source files
@@ -34,65 +38,108 @@ A pytorch implementation of AIR-Act2Act.
     └── recog_subaction.py          # Train and test the DNN for user behavior recognition
 
 
-## Overall system
+## Installation 
+The scripts are tested on Windows 10 and Python 3.6.10.  
+You also need to install the following modules.  
+
+$ pip install Pytorch = 0.4.1  
+$ pip install simplejson tqdm matplotlib argparse 
+    
+    
+## Prerequisites
+
+### To train and test with the AIR-Act2Act dataset 
+We already provide a trained model in 'models/lstm/vector/model_0013.pth'.  
+But if you want to train the model by yourself, download the AIR-Act2Act dataset [here](http://nanum.etri.re.kr:8080/etriPortal/login?language=en).  
+You need to join as a member to get to the download page.  
+The data all you need is the refined 3D skeleton files (.joint) of P001-P050.  
+For more information on the AIR-Act2Act dataset, please visit [here](https://ai4robot.github.io/air-act2act-en/#). 
+
+### To test with a Kinect camera
+If you want to use a Kinect camera to test, you need to install [Kinect for Windows SDK 2.0](https://www.microsoft.com/en-us/download/details.aspx?id=44561).    
+Then, install the Pykinect2 and PyGame modules: ```pip install pykinect2 pygame```.  
   
-<img src="https://user-images.githubusercontent.com/13827622/89387344-50651480-d73d-11ea-98c5-d32dc093d07c.png" width="70%">
+### To test with a simulated Pepper robot
+(To be updated)
 
 
 ## User recognition
-The user behavior recognition is performed at 10 fps. 
 
 ### LSTM-based model
+To recognize the user's behavior, we use a long short-term memory (LSTM) based model.  
+It is a popular model in sequential data understanding and makes a great success.  
+The input of the LSTM is set to a sequence of feature vectors of user poses.  
+The output is set to a one-hot vector of behavior class label.  
+The user recognition is performed at 10 fps. 
 
 <img src="https://user-images.githubusercontent.com/13827622/89415107-63400f00-d766-11ea-9008-6634fb496087.png" width="60%">  
 
 ### How to train
-
-1. Download the AIR-Act2Act dataset [here](http://nanum.etri.re.kr:8080/etriPortal/login?language=en).  
-You need to join as a member to get to the download page.  
-The data you need is the refined 3D skeleton files (.joint) of P001-P050.  
-For more information on the AIR-Act2Act dataset, please visit [here](https://ai4robot.github.io/air-act2act-en/#). 
-2. Put all ".joint" files in 'joint files/'.  
-3. Run ```python preprocess.py``` to extract training and test data.   
-4. Run ```python recog_subaction.py -m train``` to train the model.  
+1. Put all ".joint" files of the AIR-Act2Act dataset in 'joint files/'.  
+2. Run ```python preprocess.py``` to extract training and test data.   
+3. Run ```python recog_subaction.py -m train``` to train the model.  
 All trained models are stored in 'models/lstm/'
 
 ### How to test
-
 1. If you want to test with the data extracted from AIR-Act2Act,  
-and run ```python recog_subaction.py -m test```.  
-You need to enter the model number and data number to test in command line.  
+run ```python recog_subaction.py -m test```.  
+Then, you need to enter the model number and data number to test, into the command line.  
 The recognition results will be printed as follows:  
-```
-true:
-[4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]
-pred:
-[4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]
-```
-2. If you want to test with a Kinect camera, you need to install [Kinect for Windows SDK 2.0](https://www.microsoft.com/en-us/download/details.aspx?id=44561).    
-You also need Pykinect2 and PyGame: ```pip install pykinect2 pygame```.  
-Then, run ```python demo.py -m recognize```.  
+    ```  
+    true:  
+    [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]  
+    pred:  
+    [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]  
+    ```  
+    
+2. If you want to test with a Kinect camera, run ```python demo.py -m recognize```.  
 The captured video will be displayed on a pop-up window.  
 The recognized user behavior will be printed on the command line as follows:
-```
-stand
-stand
-...
-raise right hand
-raise right hand
-...
-threaten to hit with right hand
-...
-```
+    ```  
+    stand  
+    stand  
+    ...  
+    raise right hand  
+    raise right hand  
+    ...  
+    threaten to hit with right hand  
+    ...  
+    ```
 
 
 ## Robot behavior generation
 
+### How to test
+1. If you want to test with AIR-Act2Act data, run ```python gen_behavior.py -m test```.  
+You may select the trained model as ```python gen_behavior.py -m test -l 10```.  
+Then, enter the data number to test into the command line.   
+The input user behavior will be displayed on a pop-up window.  
+The selected robot behavior will be printed on the command line as follows:  
+    ```  
+    stand  
+    stand  
+    ...  
+    handshake  
+    handshake  
+    ...  
+    avoid  
+    ```  
+    Note: this test does not include the robot behavior adaptation.  
+
+2. If you want to test with AIR-Act2Act data and a simulated Pepper robot,  
+(To be updated)
+
+3. If you want to test with a Kinect camera and a simulated Pepper robot,  
 (To be updated)
 
 
 ## Contact
 Please email wrko@etri.re.kr if you have any questions or comments.  
+
+
+## Publication
+Woo-Ri Ko, et al., "Adaptive Behavior Generation of Social Robots Based on User Behavior Recognition," 
+Workshop on Social HRI of Human-Care Service Robots in RO-MAN 2020, *submitted*.  
 
 
 ## LICENSE
