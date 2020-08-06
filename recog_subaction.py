@@ -17,7 +17,7 @@ from constants import SUBACTION_NAMES
 
 # argument parser
 parser = argparse.ArgumentParser()
-parser.add_argument('--mode', type=str, help='mode to run ', choices=['train', 'test', 'validate'])
+parser.add_argument('-m', '--mode', type=str, help='mode to run', choices=['train', 'test', 'validate'], required=True)
 args = parser.parse_args()
 
 # define model parameters

@@ -4,6 +4,8 @@ import time
 import socket
 import numpy as np
 import simplejson as json
+import glob
+import argparse
 
 import torch
 from model import Act2Act
@@ -16,7 +18,22 @@ from utils.kinect import BodyGameRuntime
 from preprocess import MAX_DISTANCE
 
 
-MODEL_FILE = './models/lstm/vector/model_0080.pth'
+# gather all existing models
+MODEL_PATH = './models/lstm/vector'
+model_files = glob.glob(os.path.join(MODEL_PATH, "*.pth"))
+model_numbers = list()
+for model_file in model_files:
+    model_name, _ = os.path.splitext(os.path.basename(model_file))
+    model_numbers.append(int(model_name[6:10]))
+
+# argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('-l', '--model', type=int, help='model number', choices=model_numbers, default=13)
+parser.add_argument('-m', '--mode', type=str, help='mode to run', choices=['recognize', 'generate'], required=True)
+args = parser.parse_args()
+
+# global variable
+MODEL_FILE = os.path.join(MODEL_PATH, f"model_{args.model:04d}.pth")
 
 
 def pose_to_AIR(pose):
@@ -37,12 +54,13 @@ def null_features():
     return body
 
 
-def generate():
+def run_kinect():
     # connect to server
-    HOST = "127.0.0.1"
-    CMD_PORT = 10240
-    cmd_sock = init_socket(HOST, CMD_PORT)
-    send_behavior(cmd_sock, 'stand')
+    if args.mode == "generate":
+        HOST = "127.0.0.1"
+        CMD_PORT = 10240
+        cmd_sock = init_socket(HOST, CMD_PORT)
+        send_behavior(cmd_sock, 'stand')
 
     # define model parameters
     lstm_input_length = 15
@@ -51,16 +69,10 @@ def generate():
     output_dim = len(SUBACTION_NAMES)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # define LSTM model
+    # load LSTM model
     model = Act2Act(device, lstm_input_size, hidden_size, output_dim)
     model.to(device)
-
-    # load lstm model
-    if os.path.exists(MODEL_FILE):
-        print("Load model: ", MODEL_FILE)
-        model.load_state_dict(torch.load(MODEL_FILE))
-    else:
-        raise Exception(f"Model path is wrong: {MODEL_FILE}")
+    model.load_state_dict(torch.load(MODEL_FILE))
 
     # run KINECT camera
     game = BodyGameRuntime()
@@ -93,21 +105,22 @@ def generate():
             prediction = torch.argmax(scores, dim=1)
             print(SUBACTION_NAMES[prediction.item()])
 
-            # send robot behavior
-            predictions.append(prediction.item())
-            predictions = predictions[-3:]
-            if len(predictions) == 3:
-                # print(predictions)
-                if predictions == [0, 0, 0] or predictions == [6, 6, 6] or predictions == [10, 10, 10]:
-                    send_behavior(cmd_sock, 'stand')
-                elif predictions == [3, 3, 1] or predictions == [3, 3, 0]:
-                    send_behavior(cmd_sock, 'bow')
-                elif predictions == [4, 4, 4]:
-                    send_behavior(cmd_sock, 'handshake')
-                elif predictions == [7, 7, 7] or predictions == [9, 9, 9] or predictions == [11, 11, 11]:
-                    send_behavior(cmd_sock, 'hug')
-                elif predictions == [12, 12, 12] or predictions == [13, 13, 13]:
-                    send_behavior(cmd_sock, 'avoid')
+            # send behavior to Pepper robot
+            if args.mode == "generate":
+                predictions.append(prediction.item())
+                predictions = predictions[-3:]
+                if len(predictions) == 3:
+                    # print(predictions)
+                    if predictions == [0, 0, 0] or predictions == [6, 6, 6] or predictions == [10, 10, 10]:
+                        send_behavior(cmd_sock, 'stand')
+                    elif predictions == [3, 3, 1] or predictions == [3, 3, 0]:
+                        send_behavior(cmd_sock, 'bow')
+                    elif predictions == [4, 4, 4]:
+                        send_behavior(cmd_sock, 'handshake')
+                    elif predictions == [7, 7, 7] or predictions == [9, 9, 9] or predictions == [11, 11, 11]:
+                        send_behavior(cmd_sock, 'hug')
+                    elif predictions == [12, 12, 12] or predictions == [13, 13, 13]:
+                        send_behavior(cmd_sock, 'avoid')
 
 
 def init_socket(HOST, CMD_PORT):
@@ -141,5 +154,11 @@ def handshake_behavior():
     pass
 
 
+def main():
+    print("Model path: ", MODEL_FILE)
+    if not os.path.exists(MODEL_FILE):
+        raise Exception("Cannot load the model.")
+    run_kinect()
+
 if __name__ == '__main__':
-    generate()
+    main()

@@ -25,12 +25,11 @@ A pytorch implementation of AIR-Act2Act.
     ├── constants.py                # Global constants
     ├── data.py                     # Get AIR-Act2Act dataset
     ├── demo.py                     # Demo with Kinect camera
-    ├── gen_behavior.py             # Test behavior generation
+    ├── gen_behavior.py             # Select and adapt robot behaviors
     ├── k_clustering.py             # Label user behavior class using K-means clustering
     ├── model.py                    # Deep neural network
     ├── preprocess.py               # Generate training and test data
-    ├── recog_subaction.py          # Train and test DNN for user behavior recognition
-    └── requirements.txt
+    └── recog_subaction.py          # Train and test the DNN for user behavior recognition
 
 ## Overall system
   
@@ -50,13 +49,13 @@ The data you need is the refined 3D skeleton files (.joint) of P001-P050.
 For more information on the AIR-Act2Act dataset, please visit [here](https://ai4robot.github.io/air-act2act-en/#). 
 2. Put all ".joint" files in 'joint files/'.  
 3. Run ```python preprocess.py``` to extract training and test data.   
-4. Run ```python recog_subaction.py --mode train``` to train the model.  
+4. Run ```python recog_subaction.py -m train``` to train the model.  
 All trained models are stored in 'models/lstm/'
 
 ### How to test
 
 1. If you want to test with the data extracted from AIR-Act2Act,  
-and run ```python recog_subaction.py --mode test```.  
+and run ```python recog_subaction.py -m test```.  
 You need to enter the model number and data number to test in command line.  
 The recognition results will be printed as follows:  
 ```
@@ -65,8 +64,11 @@ true:
 pred:
 [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]
 ```
-2. If you want to test with a Kinect camera, you need to install [Kinect for Windows SDK 2.0](https://www.microsoft.com/en-us/download/details.aspx?id=44561).  
-(To be updated)
+2. If you want to test with a Kinect camera, you need to install [Kinect for Windows SDK 2.0](https://www.microsoft.com/en-us/download/details.aspx?id=44561).    
+You also need Pykinect2 and PyGame: ```pip install pykinect2 pygame```.  
+Then, run ```python demo.py -m recognize```.  
+The captured video will be displayed on a pop-up window.  
+The recognized user behavior will be printed on the command line.
 
 ## Robot behavior generation
 
