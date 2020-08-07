@@ -1,6 +1,7 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from textwrap import wrap
 
 # plt.rc('font', family='NanumGothic')
 
@@ -29,7 +30,7 @@ def animate_3d(f, features, results, axes):
         ret_artists.extend(draw_parts(axes[idx], [neck, lshoulder, lelbow, lwrist]))
         ret_artists.extend(draw_parts(axes[idx], [neck, rshoulder, relbow, rwrist]))
 
-        result = results[idx][f] if results is not None else ''
+        result = "\n".join(wrap(results[idx][f], 15)) if results is not None else ''
         ret_artists.append(axes[idx].text(0, 0, 0, F"{result}\n{f+1}/{len(features[idx])}", fontsize=20))
 
     return ret_artists

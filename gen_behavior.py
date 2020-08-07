@@ -5,6 +5,7 @@ import time
 import socket
 import simplejson as json
 import argparse
+from textwrap import wrap
 
 import torch
 from model import Act2Act
@@ -63,14 +64,15 @@ def test():
         data_files.extend(glob.glob(os.path.join(TEST_PATH, f"*{action}*.npz")))
     # random.shuffle(data_files)
     data_files.sort()
-    print(f'There are {len(data_files)} data.')
-    for idx in range(min(len(data_files), 50)):
-        data_file = os.path.basename(data_files[idx])
-        data_name, _ = os.path.splitext(data_file)
-        print(f'{idx}: {data_name}')
 
     # select data to test
     while True:
+        print(f'There are {len(data_files)} data.')
+        for idx in range(min(len(data_files), 50)):
+            data_file = os.path.basename(data_files[idx])
+            data_name, _ = os.path.splitext(data_file)
+            print(f'{idx}: {data_name}')
+
         var = int(input("Input data number to display: "))
         test_file = data_files[var]
         print(os.path.normpath(test_file))
@@ -133,7 +135,7 @@ def animate_3d(f, features, results, ax, cmd_sock):
     ret_artists.extend(draw_parts(ax, [neck, lshoulder, lelbow, lwrist]))
     ret_artists.extend(draw_parts(ax, [neck, rshoulder, relbow, rwrist]))
 
-    result = "None" if results[f] == "None" else SUBACTION_NAMES[results[f]]
+    result = "None" if results[f] == "None" else "\n".join(wrap(SUBACTION_NAMES[results[f]], 15))
     ret_artists.append(ax.text(0, 0, 0, F"{result}\n{f+1}/{len(features)}", fontsize=20))
 
     # send behavior to client
