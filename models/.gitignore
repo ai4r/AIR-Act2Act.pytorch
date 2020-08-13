@@ -1,4 +1,6 @@
 # Ignore everything in this directory
-*
+k-means/*
+lstm/vector/*
+
 # Except this file
-!.gitignore
+!/lstm/*/model_0013.pth

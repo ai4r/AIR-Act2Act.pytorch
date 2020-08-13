@@ -51,7 +51,7 @@ $ pip install simplejson tqdm matplotlib argparse
 
 ### To train and test with the AIR-Act2Act dataset 
 We already provide a trained model in 'models/lstm/vector/model_0013.pth'.  
-But if you want to train the model by yourself, download the AIR-Act2Act dataset [here](http://nanum.etri.re.kr:8080/etriPortal/login?language=en).  
+But if you want to train the model by yourself, download the [AIR-Act2Act dataset](http://nanum.etri.re.kr:8080/etriPortal/login?language=en).  
 You need to join as a member to get to the download page.  
 The data all you need is the refined 3D skeleton files (.joint) of P001-P050.  
 For more information on the AIR-Act2Act dataset, please visit [here](https://ai4robot.github.io/air-act2act-en/#). 
