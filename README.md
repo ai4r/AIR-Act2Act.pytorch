@@ -43,10 +43,10 @@ Finally, the selected behavior is modified according to the user's posture.
 The scripts are tested on Windows 10 and Anaconda Python 3.6.  
 You also need to install the following modules.  
 
-$ pip install simplejson tqdm matplotlib argparse  
-$ pip install pandas sklearn  
+$ pip install simplejson tqdm matplotlib argparse pandas sklearn  
 $ conda install pytorch=0.4.1 cuda92 -c pytorch  
-    
+cuda 9.2 installation - [https://developer.nvidia.com/cuda-92-download-archive?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exelocal](https://developer.nvidia.com/cuda-92-download-archive?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exelocal)
+
     
 ## Prerequisites
 
