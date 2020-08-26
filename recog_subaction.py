@@ -3,6 +3,10 @@ import os
 import glob
 import random
 import argparse
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from textwrap import wrap
 
 import torch
 import torch.nn as nn
@@ -182,31 +186,75 @@ def validate_models():
                                dim_output=(output_dim, 1))
     valid_data_loader = data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 
-    # validate all existing models
-    loss_function = nn.CrossEntropyLoss()
+    # show all existing models
     model_files = glob.glob(os.path.join(MODEL_PATH, "*.pth"))
+    model_names = list()
     for model_file in model_files:
-        model.load_state_dict(torch.load(model_file))
+        model_name, _ = os.path.splitext(os.path.basename(model_file))
+        model_names.append(model_name)
+    print(f'There are {len(model_files)} models.')
+    for i in range(len(model_files)):
+        print(model_names[i])
 
-        valid_loss = 0.0
-        valid_acc = 0.0
-        with torch.no_grad():
-            for valid_inputs, valid_outputs in valid_data_loader:
-                valid_inputs = valid_inputs.to(device)
-                valid_outputs = valid_outputs.to(device)
+    # validate model
+    while True:
+        # select model to test
+        model_num = input(f"\nInput model number to test. \nIf you want to load 'model_0010', enter '10':")
+        model_num = int(model_num)
+        selected_model = os.path.join(MODEL_PATH, f"model_{model_num:04d}.pth")
+        if os.path.exists(selected_model):
+            print("Load model: ", selected_model)
+            model.load_state_dict(torch.load(selected_model))
 
-                valid_scores = model(valid_inputs)
-                valid_predictions = torch.argmax(valid_scores, dim=1)
-                acc = (valid_predictions == valid_outputs).float().mean()
-                valid_acc += acc.item()
+            # calculate accuracy, loss, confusion matrix
+            loss_function = nn.CrossEntropyLoss()
+            valid_loss = 0.0
+            valid_acc = 0.0
+            conf_matrix = np.zeros([14, 14])
+            with torch.no_grad():
+                for valid_inputs, valid_outputs in valid_data_loader:
+                    valid_inputs = valid_inputs.to(device)
+                    valid_outputs = valid_outputs.to(device)
 
-                loss = loss_function(valid_scores, valid_outputs)
-                valid_loss += loss.item()
+                    # accuracy
+                    valid_scores = model(valid_inputs)
+                    valid_predictions = torch.argmax(valid_scores, dim=1)
+                    acc = (valid_predictions == valid_outputs).float().mean()
+                    valid_acc += acc.item()
 
-        # Print average training/validation loss and accuracy
-        print(f"{os.path.basename(model_file)}")
-        print(f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}, "
-              f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
+                    # loss
+                    loss = loss_function(valid_scores, valid_outputs)
+                    valid_loss += loss.item()
+
+                    # confusion matrix
+                    for i, j in zip(valid_outputs, valid_predictions):
+                        conf_matrix[i][j] += 1
+
+            # print average loss and accuracy
+            print(f"Validation Loss: {valid_loss / len(valid_data_loader):.5f}, "
+                  f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
+
+            # show confusion matrix
+            for i in range(len(SUBACTION_NAMES)):
+                n_sum = sum(conf_matrix[i])
+                for j in range(len(SUBACTION_NAMES)):
+                    conf_matrix[i][j] = conf_matrix[i][j] / n_sum
+
+            labels = ["stand", "open the door", "hand on wall", "not shown", "raise right hand", "wave right hand",
+                      "lower right hand", "cry with right hand", "raise both hands", "cry with both hands",
+                      "lower left hand or both hands", "raise or cry with left hand", "threaten to hit with right hand",
+                      "raise or threaten to hit with left hand"]
+            labels = ["\n".join(wrap(item, 12)) for item in labels]
+            plt.figure(figsize=(20, 20))
+            g = sns.heatmap(conf_matrix, annot=True, fmt='.0%', xticklabels=labels, yticklabels=labels, linewidth=1)
+            g.set_xticklabels(g.get_xticklabels(), horizontalalignment='right', rotation=55)
+            g.set_yticklabels(g.get_yticklabels(), horizontalalignment='right', rotation=0)
+            plt.xlabel('Predicted label', fontsize=20)
+            plt.ylabel('True label', fontsize=20)
+            plt.title('Confusion Matrix\n', fontsize=30)
+            plt.show()
+
+        print("Model number is wrong.")
 
 
 def main():

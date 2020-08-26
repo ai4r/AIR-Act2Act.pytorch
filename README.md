@@ -98,6 +98,16 @@ All trained models are stored in 'models/lstm/'
     [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]  
     ```  
     
+### How to check accuracy, loss, and confusion matrix of a trained model
+1. Run ```python recog_subaction.py -m validate```.  
+2. Enter the model number to test, into the command line.  
+3. The average accuracy and loss of the model will be printed on the command line as follows:  
+    ```  
+    Validation Loss: 0.03972, Validation Acc: 0.98527  
+    ```
+4. The confusion matrix of the model will be displayed on a pop-up window.  
+    <img src="https://user-images.githubusercontent.com/13827622/91275401-137bc300-e7bb-11ea-9029-6656fa4607c3.png" width="70%">  
+
 ### How to test with a Kinect camera
 1. Run ```python demo.py -m recognize```.  
 2. The captured video will be displayed on a pop-up window.  
