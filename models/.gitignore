@@ -1,5 +1,4 @@
 # Ignore everything in this directory
-k-means/*
 lstm/vector/*
 
 # Except this file
