@@ -6,10 +6,13 @@ import pickle
 from tqdm import tqdm
 from sklearn.cluster import KMeans
 
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils.AIR import norm_features, denorm_features
-from utils.draw import draw
-from constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
-from constants import SUBACTION_NAMES, sub_action_mapping_1, sub_action_mapping_2, sub_action_mapping_3
+from utils.draw import Artist
+from user.constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE
+from user.constants import SUBACTION_NAMES, sub_action_mapping_1, sub_action_mapping_2, sub_action_mapping_3
+from setting import gen_sequence, TRAIN_PATH, TEST_PATH, K_MEANS_MODEL_PATH, NORM_METHOD
 
 
 class KMeansClustering:
@@ -24,6 +27,7 @@ class KMeansClustering:
         model_file = os.path.join(self.model_path,
                                   f"{''.join(self.actions)}_full_{self.n_clusters}_cluster.pkl")
         if not os.path.exists(model_file):
+            print("K-means clustering model training...")
             self.train(actions, n_clusters)
         self.km_model = pickle.load(open(model_file, "rb"))
 
@@ -110,30 +114,25 @@ class KMeansClustering:
 
 def test():
     # 보고싶은 액션 입력
-    actions = ["A001", "A004"]
-    n_clusters = 4
+    # actions = ["A001", "A004"]
+    # n_clusters = 4
 
     # actions = ["A004", "A005", "A006"]
     # n_clusters = 9
 
-    # actions = ["A004", "A005", "A008"]
-    # n_clusters = 7
+    actions = ["A004", "A005", "A008"]
+    n_clusters = 7
 
     # parameters
     seq_length = 15
-    norm_method = 'vector'
-    train_path = './data files/train data'
-    test_path = './data files/valid data'
-    model_path = './models/k-means'
-
-    kmeans = KMeansClustering(actions=actions, n_clusters=n_clusters, seq_length=seq_length, norm_method=norm_method,
-                              train_paths=[train_path, test_path], model_path=model_path)
+    kmeans = KMeansClustering(actions=actions, n_clusters=n_clusters, seq_length=seq_length, norm_method=NORM_METHOD,
+                              train_paths=[TRAIN_PATH, TEST_PATH], model_path=K_MEANS_MODEL_PATH)
     km_model = kmeans.km_model
 
     # show all test data
     data_files = list()
     for action in actions:
-        data_files.extend(glob.glob(os.path.join(test_path, F"*{action}*.npz")))
+        data_files.extend(glob.glob(os.path.join(TEST_PATH, F"*{action}*.npz")))
     data_files.sort()
     n_data = len(data_files)
 
@@ -142,15 +141,15 @@ def test():
         print('%d: %s' % (data_idx, os.path.basename(data_files[data_idx])))
 
     # select data name to draw
+    artist = Artist(n_plot=1)
     while True:
         var = int(input("Input data number to display: "))
-    # for var in range(n_data):
         data_file = data_files[var]
 
         with np.load(data_file, allow_pickle=True) as data:
+            # action class mapping
             print(os.path.basename(data_file))
             action = os.path.basename(data_file)[4:8]
-
             if action == 'A001' or action == 'A004':
                 sub_action_mapping = sub_action_mapping_1
             elif action == 'A005' or action == 'A006':
@@ -158,31 +157,31 @@ def test():
             elif action == 'A008':
                 sub_action_mapping = sub_action_mapping_3
 
-            human_data = [norm_features(human, norm_method) for human in data['human_info']]
+            # extract inputs from data file
+            human_data = [norm_features(human, NORM_METHOD) for human in data['human_info']]
             third_data = data['third_info']
 
             sampled_human_data = human_data[::3]
             sampled_third_data = third_data[::3]
 
+            # draw data from start start
+            for f in range(seq_length):
+                features = denorm_features(sampled_human_data[f], NORM_METHOD)
+                action_info = "None"
+                frame_info = f"{f}/{len(sampled_human_data)}"
+                artist.update([features], [action_info], [frame_info], fps=10)
+
             # recognize sub-action
-            predictions = list()
             for human_seq, third_seq in zip(gen_sequence(sampled_human_data, seq_length),
                                             gen_sequence(sampled_third_data, seq_length)):
                 seq = np.concatenate((third_seq, human_seq), axis=1)
                 df = kmeans.make_dataframe([seq], seq_length)
                 sub_action = km_model.predict(df)
-                predictions.append(sub_action[0])
-            print(predictions)
-
-            # draw results
-            features = list()
-            for f in range(len(sampled_human_data)):
-                cur_features = sampled_human_data[f]
-                cur_features = denorm_features(cur_features, norm_method)
-                features.append(cur_features)
-            names = [SUBACTION_NAMES[sub_action_mapping[pred]] for pred in predictions]
-            predictions = ["None"] * (seq_length - 1) + names
-            draw([features], [predictions], save_path=None, b_show=True)
+                action_name = SUBACTION_NAMES[sub_action_mapping[sub_action[0]]]
+                features = denorm_features(human_seq[-1], NORM_METHOD)
+                f += 1
+                frame_info = f"{f}/{len(sampled_human_data)}"
+                artist.update([features], [action_name], [frame_info], fps=10)
 
 
 if "__main__" == __name__:

@@ -16,35 +16,42 @@ Finally, the selected behavior is modified according to the user's posture.
     .
     ├── data files/                 # Path to save the extracted data files
     ├── joint files/                # Path to move the joint files of AIR-Act2Act dataset
-    ├── models/                     # Path to save the trained models
-    │   └── k-means/                # K-means clustering models to label the user behavior classes
-    ├── server/
-    │   └── server.exe              # Connect to a virtual Pepper robot in Chreographe
+    ├── robot/
+    │   ├── server/
+    │   │    └── server.exe         # Connect to a virtual Pepper robot in Chreographe
+    │   ├── adapter.py              # Adapt robot behaviors to the user posture
+    │   └── selecter.py             # Select robot behaviors according to the user behavior
+    ├── user/
+    │   ├── models/
+    │   │    ├── k-means/           # K-means clustering models to label the user behavior classes
+    │   │    └── lstm/              # DNN models to recognize the user behavior
+    │   ├── classifier.py           # Train and test the DNN models for user behavior recognition
+    │   ├── constants.py            # Global constants
+    │   ├── data.py                 # Get AIR-Act2Act dataset
+    │   ├── k_clustering.py         # Label user behavior classes using K-means clustering
+    │   └── model.py                # Deep neural network
     ├── utils/
     │   ├── AIR.py                  # Read AIR-Act2Act data files
     │   ├── draw.py                 # Draw 3D skeletons
     │   ├── kinect.py               # Run Kinect camera
-    │   └── robot.py                # Convert between 3D joint position and robo joint angles
+    │   └── robot.py                # Convert between 3D joint position and robot joint angles
     ├── .gitignore
     ├── LICENSE.md
     ├── LICENSE_ko.md
     ├── README.md
-    ├── constants.py                # Global constants
-    ├── data.py                     # Get AIR-Act2Act dataset
-    ├── demo.py                     # Demo with Kinect camera
-    ├── gen_behavior.py             # Select and adapt robot behaviors
-    ├── k_clustering.py             # Label user behavior class using K-means clustering
-    ├── model.py                    # Deep neural network
+    ├── generate.py                 # Demo: generating robot behaviors 
+    ├── setting.py                  # Global constants
     ├── preprocess.py               # Generate training and test data
-    └── recog_subaction.py          # Train and test the DNN for user behavior recognition
+    └── recognize.py                # Demo: recognizing user behaviors
 
 
 ## Installation 
 The scripts are tested on Windows 10 and Anaconda Python 3.6.  
 You also need to install the following modules.  
 
-$ pip install simplejson tqdm matplotlib argparse pandas  
+$ pip install simplejson tqdm matplotlib argparse  
 $ pip install scikit-learn==0.22.1  
+$ pip install pandas==0.25.0  
 $ conda install pytorch=0.4.1 cuda92 -c pytorch  
 cuda 9.2 installation - [here](https://developer.nvidia.com/cuda-92-download-archive?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exelocal)
 
@@ -84,23 +91,12 @@ The user recognition is performed at 10 fps.
 ### How to train with AIR-Act2Act data
 1. Put all ".joint" files of the AIR-Act2Act dataset in 'joint files/'.  
 2. Run ```python preprocess.py``` to extract training and test data.   
-3. Run ```python recog_subaction.py -m train``` to train the model.  
-All trained models are stored in 'models/lstm/'
+3. Run ```python user\classifier.py -m train``` to train the model.  
+   All trained models are stored in 'models/lstm/'
 
-### How to test with AIR-Act2Act data
-1. Run ```python recog_subaction.py -m test```.  
-2. Enter the model number and data number to test, into the command line.  
-3. The recognition results will be printed as follows:  
-    ```  
-    true:  
-    [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]  
-    pred:  
-    [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0]  
-    ```  
-    
-### How to check accuracy, loss, and confusion matrix of a trained model
-1. Run ```python recog_subaction.py -m validate```.  
-2. Enter the model number to test, into the command line.  
+### How to verify a trained model
+1. Run ```python user\classifier.py -m verify```.  
+2. Enter the model number to verify, into the command line.  
 3. The average accuracy and loss of the model will be printed on the command line as follows:  
     ```  
     Validation Loss: 0.03972, Validation Acc: 0.98527  
@@ -108,34 +104,33 @@ All trained models are stored in 'models/lstm/'
 4. The confusion matrix of the model will be displayed on a pop-up window.  
     <img src="https://user-images.githubusercontent.com/13827622/91275401-137bc300-e7bb-11ea-9029-6656fa4607c3.png" width="70%">  
 
-### How to test with a Kinect camera
-1. Run ```python demo.py -m recognize```.  
-2. The captured video will be displayed on a pop-up window.  
-The recognized user behavior will be printed on the command line as follows:  
-    ```  
-    stand  
-    stand  
-    ...  
-    raise right hand  
-    raise right hand  
-    ...  
-    threaten to hit with right hand  
-    ...  
-    ```
+### How to test a trained model with AIR-Act2Act data
+1. Run ```python recognize.py -m data```.  
+2. If you want to test a specific model, e.g. 'model_0010.pth',  
+   run ```python recognize.py -m data -l 10```.  
+2. Enter the data number to test, into the command line.  
+3. The recognition results will be displayed on a pop-up window.  
+
+### How to test a trained model with Kinect camera
+1. Connect to the Kinect camera.
+2. Run ```python recognize.py -m kinect -l {model number}```.  
+3. If you want to test a specific model, e.g. 'model_0010.pth',  
+   run ```python recognize.py -m kinect -l 10```.  
+4. The captured video and the recognition results will be displayed on pop-up windows.  
 
 
 ## Robot behavior generation
-
 The robot generates a behavior that suits the user's behavior according to predefined rules.  
 Robot behavior adaptation has not yet been implemented.
 It will be updated soon.
 
 ### How to test with AIR-Act2Act data
-1. Run ```python gen_behavior.py -m test```.  
-2. Select the trained model as ```python gen_behavior.py -m test -l 10```.  
+1. Run ```python generate.py -m data```.  
+2. If you want to test a specific model, e.g. 'model_0010.pth',  
+   run ```python generate.py -m data -l 10```   
 3. Enter the data number to test into the command line.   
 4. The input user behavior will be displayed on a pop-up window.  
-The selected robot behavior will be printed on the command line as follows:  
+   The selected robot behavior will be printed on the command line as follows:  
     ```  
     stand  
     stand  
@@ -145,21 +140,22 @@ The selected robot behavior will be printed on the command line as follows:
     ...  
     avoid  
     ```  
+    
+### How to test with Kinect camera
+1. Connect to the Kinect camera.
+2. Run ```python generate.py -m kinect```.  
+3. If you want to test a specific model, e.g. 'model_0010.pth',  
+   run ```python generate.py -m kinect -l 10```   
+4. The captured video and the recognition results will be displayed on pop-up windows.  
+   The selected robot behavior will be printed on the command line.
 
-### How to test with AIR-Act2Act data and virtual Pepper robot
+### How to test with virtual Pepper robot
 1. Launch Choregraphe and connect to a virtual Pepper robot.  
 2. To send commands to Choregraphe, open command prompt and run server:  
-```server\server.exe -p {port number}```  
-3. Open an other command prompt, run ```python gen_behavior.py -m test_pepper```.  
-4. The input user behavior will be displayed on a pop-up window.  
-The selected robot behavior will be generated by a virtual Pepper in Choregraphe.  
-
-### How to test with Kinect camera and virtual Pepper robot
-1. Launch Choregraphe and connect to a virtual Pepper robot.  
-2. Run server: ```server\server.exe -p {port number}```  
-3. Run Act2Act: ```python demo.py -m generate```  
-4. The captured video will be displayed on a pop-up window.  
-The selected robot behavior will be generated by a virtual Pepper in Choregraphe. 
+   ```server\server.exe -p {port number}```  
+3. Open an other command prompt, run 'python generate.py -m {mode}, -l {model number} --use_robot'.
+4. The captured video and the recognition results will be displayed on pop-up windows.  
+   The selected robot behavior will be generated by a virtual Pepper in Choregraphe.  
       
 
 ## Contact
@@ -168,7 +164,7 @@ Please email wrko@etri.re.kr if you have any questions or comments.
 
 ## Publication
 Woo-Ri Ko, et al., "Adaptive Behavior Generation of Social Robots Based on User Behavior Recognition," 
-Workshop on Social HRI of Human-Care Service Robots in RO-MAN 2020, *submitted*.  
+Workshop on Social HRI of Human-Care Service Robots in RO-MAN 2020, *accepted*.  
 
 
 ## LICENSE

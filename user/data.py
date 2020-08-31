@@ -1,33 +1,27 @@
 # -*- coding: utf-8 -*-
-# AIR-Act2Act 데이터셋을 불러와서 data augmentation 하기
-# data augmentation 1: skeleton 정보에 random noise 추가
-# data augmentation 2: action 간 부드럽게 연결된 데이터 생성
-from torch.utils import data
-
 import os
 import glob
 import numpy as np
 from tqdm import tqdm
 
+from torch.utils import data
+
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils.AIR import norm_features
-from k_clustering import KMeansClustering
-from constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE, gen_sequence
-from constants import sub_action_mapping_1, sub_action_mapping_2, sub_action_mapping_3
-
-# skeleton feature normalization
-norm_method = 'vector'
-
-# other parameters
-# ACTIONS = ["A%03d" % a for a in range(1, 11)]
-ACTIONS = ['A001', 'A004', 'A005', 'A006', 'A008']
+from user.k_clustering import KMeansClustering
+from user.constants import KINECT_FRAME_RATE, TARGET_FRAME_RATE
+from user.constants import sub_action_mapping_1, sub_action_mapping_2, sub_action_mapping_3
+from setting import gen_sequence, NORM_METHOD, ACTIONS, TRAIN_PATH, TEST_PATH, K_MEANS_MODEL_PATH
 
 
 class AIRDataSet(data.Dataset):
     def __init__(self, data_path, dim_input, dim_output, data_name=None, b_add_noise=False, b_connect_sequence=False):
         # load k-means clustering models
-        seq_length = 15
-        train_paths = ['./data files/train data', './data files/valid data']
-        model_path = './models/k-means'
+        seq_length = dim_input[0]
+        train_paths = [TRAIN_PATH, TEST_PATH]
+        model_path = K_MEANS_MODEL_PATH
+        norm_method = NORM_METHOD
 
         actions_1 = ["A001", "A004"]
         n_clusters_1 = 4
@@ -49,7 +43,8 @@ class AIRDataSet(data.Dataset):
         else:
             for action in ACTIONS:
                 self.file_names.extend(glob.glob(os.path.join(self.data_path, f"*{action}*.npz")))
-        print(f'Data loading... ({data_path})')
+        path = data_path if data_name is None else os.path.join(data_path, data_name)
+        print(f'Data loading... ({path})')
         print(f'Total {len(self.file_names)} files.')
 
         self.human_data = list()
