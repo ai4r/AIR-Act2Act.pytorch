@@ -7,7 +7,7 @@ import simplejson as json
 import argparse
 
 from recognize import test_with_data, test_with_kinect, load_model
-from robot.adapter import POSES
+from robot.adapter import adapt_behavior
 from robot.selector import select_behavior
 from setting import LSTM_MODEL_PATH
 
@@ -35,7 +35,7 @@ def main():
         HOST = "127.0.0.1"
         CMD_PORT = 10240
         cmd_sock = init_socket(HOST, CMD_PORT)
-        send_behavior(cmd_sock, POSES['stand'])
+        send_behavior(cmd_sock, adapt_behavior('stand'))
     else:
         cmd_sock = None
 
@@ -60,10 +60,10 @@ def main():
         if robot_behavior is None:
             continue
 
+        print(robot_behavior)
         if args.use_robot:
-            send_behavior(cmd_sock, POSES[robot_behavior])
-        else:
-            print(robot_behavior)
+            robot_pose = adapt_behavior(robot_behavior, user_pose)
+            send_behavior(cmd_sock, robot_pose)
 
 
 # wait for connection to server

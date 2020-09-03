@@ -3,7 +3,7 @@ A pytorch implementation of AIR-Act2Act.
 
 
 ## Overall system of the AIR-Act2Act
-A Kinect sensor captures the user’s 3D joint positions through skeletal tracking.  
+A Kinect sensor captures the user's 3D joint positions through skeletal tracking.  
 Then, the user's behavior is recognized using a deep neural network (DNN).  
 The robot's behavior that responds appropriately to the user's behavior   
 is selected according to the predefined rules.  
@@ -88,7 +88,7 @@ The user recognition is performed at 10 fps.
 
 <img src="https://user-images.githubusercontent.com/13827622/89415107-63400f00-d766-11ea-9008-6634fb496087.png" width="60%">  
 
-### How to train with AIR-Act2Act data
+### How to train with AIR-Act2Act data (optional)
 1. Put all ".joint" files of the AIR-Act2Act dataset in 'joint files/'.  
 2. Run ```python preprocess.py``` to extract training and test data.   
 3. Run ```python user\classifier.py -m train``` to train the model.  

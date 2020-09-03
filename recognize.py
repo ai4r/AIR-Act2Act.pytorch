@@ -3,6 +3,7 @@ import os
 import time
 import numpy as np
 import glob
+import random
 import argparse
 from datetime import timedelta
 
@@ -48,6 +49,7 @@ def test_with_data(model):
     for action in ACTIONS:
         data_files.extend(glob.glob(os.path.join(TEST_PATH, f"*{action}*.npz")))
     print(f'\nThere are {len(data_files)} data.')
+    random.shuffle(data_files)
 
     # select data to test and return input and output
     artist = Artist(n_plot=1)
@@ -67,13 +69,13 @@ def test_with_data(model):
             for f, human in enumerate(human_data[:test_dataset.dim_input[0]]):
                 features = denorm_features(human, NORM_METHOD)
                 artist.update([features], ["None"], [f"{f}/{len(human_data)}"], fps=10)
-                yield _, None
+                yield None, None
             for idx, inputs in enumerate(test_dataset.inputs):
                 behaviors, behavior_names = classify(model, [inputs])
                 cur_features = denorm_features(inputs[-1][1:], NORM_METHOD)
                 f += 1
                 artist.update([cur_features], [behavior_names[0]], [f"{f}/{len(human_data)}"], fps=10)
-                yield _, behaviors[0]
+                yield None, behaviors[0]
         else:
             print("Wrong data number.")
 
