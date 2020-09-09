@@ -164,7 +164,7 @@ Please email wrko@etri.re.kr if you have any questions or comments.
 
 ## Publication
 Woo-Ri Ko, et al., "Adaptive Behavior Generation of Social Robots Based on User Behavior Recognition," 
-Workshop on Social HRI of Human-Care Service Robots in RO-MAN 2020, *accepted*.  
+Workshop on Social HRI of Human-Care Service Robots in RO-MAN 2020.  
 
 
 ## LICENSE
