@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import glob
+import time
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,13 +28,13 @@ if __name__ == '__main__':
 
 # define model parameters
 lstm_input_length = 15
-lstm_input_size = 25
+lstm_input_size = 31
 batch_size = 64
 hidden_size = 1024
 output_dim = len(SUBACTION_NAMES)
 learning_rate = 0.01
-num_epochs = 200
-save_epochs = 10
+num_epochs = 50
+save_epochs = 1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -92,6 +93,9 @@ def load_test_data(data_name=None):
 
 # train model
 def train():
+    if not os.path.exists(LSTM_MODEL_PATH):
+        os.makedirs(LSTM_MODEL_PATH)
+
     model = create_model()
     loss_function = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -101,6 +105,8 @@ def train():
     _, valid_data_loader = load_test_data()
 
     # training
+    file = open(os.path.join(LSTM_MODEL_PATH, f"{time.time()}.log"), "a")
+    file.write('t.loss\tt.acc\tv.loss\tv.acc\n')
     for epoch in range(1, num_epochs + 1):
         train_loss = 0.0
         train_acc = 0.0
@@ -146,6 +152,10 @@ def train():
                   f"Validation Acc: {valid_acc / len(valid_data_loader):.5f}")
             model_path = os.path.join(LSTM_MODEL_PATH, f"model_{epoch:04d}.pth")
             torch.save(model.state_dict(), model_path)
+            file.write(f'{train_loss / len(train_data_loader):.5f}\t{train_acc / len(train_data_loader):.5f}\t'
+                       f'{valid_loss / len(valid_data_loader):.5f}\t{valid_acc / len(valid_data_loader):.5f}\n')
+
+    file.close()
 
 
 # show accuracy, loss, and confusion matrix of a trained model
@@ -179,7 +189,7 @@ def verify():
             loss_function = nn.CrossEntropyLoss()
             valid_loss = 0.0
             valid_acc = 0.0
-            conf_matrix = np.zeros([14, 14])
+            conf_matrix = np.zeros([len(SUBACTION_NAMES), len(SUBACTION_NAMES)])
             with torch.no_grad():
                 for valid_inputs, valid_outputs in valid_data_loader:
                     valid_inputs = valid_inputs.to(device)

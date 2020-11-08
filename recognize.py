@@ -27,7 +27,7 @@ for model_file in model_files:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', type=str, help='mode to run', choices=['data', 'kinect'], required=True)
-    parser.add_argument('-l', '--model', type=int, help='model number', choices=model_numbers, default=13)
+    parser.add_argument('-l', '--model', type=int, help='model number', choices=model_numbers, default=26)
     args = parser.parse_args()
 
     MODEL_FILE = os.path.join(LSTM_MODEL_PATH, f"model_{args.model:04d}.pth")

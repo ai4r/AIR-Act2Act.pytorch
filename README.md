@@ -59,7 +59,7 @@ cuda 9.2 installation - [here](https://developer.nvidia.com/cuda-92-download-arc
 ## Prerequisites
 
 ### To train and test with the AIR-Act2Act dataset 
-We already provide a trained model in 'models/lstm/vector/model_0013.pth'.  
+We already provide a trained model in 'models/lstm/vector/model_0026.pth'.  
 But if you want to train the model by yourself, download the [AIR-Act2Act dataset](http://nanum.etri.re.kr:8080/etriPortal/login?language=en).  
 You need to join as a member to get to the download page.  
 The data all you need is the refined 3D skeleton files (.joint) of P001-P050.  

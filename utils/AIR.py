@@ -86,7 +86,7 @@ def norm_features(body, method='torso'):
 # move origin to torso and
 # normalize to the distance between torso and spineShoulder
 def norm_to_torso(body):
-    torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, shoulderRight, elbowRight, wristRight = \
+    torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight = \
         get_upper_body_joints(body)
 
     features = list()
@@ -95,9 +95,11 @@ def norm_to_torso(body):
     features.extend(norm_to_distance(torso, spineShoulder, shoulderLeft))
     features.extend(norm_to_distance(torso, spineShoulder, elbowLeft))
     features.extend(norm_to_distance(torso, spineShoulder, wristLeft))
+    features.extend(norm_to_distance(torso, spineShoulder, handLeft))
     features.extend(norm_to_distance(torso, spineShoulder, shoulderRight))
     features.extend(norm_to_distance(torso, spineShoulder, elbowRight))
     features.extend(norm_to_distance(torso, spineShoulder, wristRight))
+    features.extend(norm_to_distance(torso, spineShoulder, handRight))
     return features
 
 
@@ -108,12 +110,14 @@ def get_upper_body_joints(body):
     elbowLeft = vectorize(body[5])
     wristRight = vectorize(body[10])
     wristLeft = vectorize(body[6])
+    handRight = vectorize(body[23])
+    handLeft = vectorize(body[21])
 
     torso = vectorize(body[0])
     spineShoulder = vectorize(body[20])
     head = vectorize(body[3])
 
-    return torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, shoulderRight, elbowRight, wristRight
+    return torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight
 
 
 def norm_to_distance(origin, basis, joint):
@@ -124,7 +128,7 @@ def norm_to_distance(origin, basis, joint):
 
 
 def norm_to_vector(body):
-    torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, shoulderRight, elbowRight, wristRight = \
+    torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight = \
         get_upper_body_joints(body)
 
     features = list()
@@ -133,9 +137,11 @@ def norm_to_vector(body):
     features.extend(norm_to_distance(spineShoulder, shoulderLeft, shoulderLeft))
     features.extend(norm_to_distance(shoulderLeft, elbowLeft, elbowLeft))
     features.extend(norm_to_distance(elbowLeft, wristLeft, wristLeft))
+    features.extend(norm_to_distance(wristLeft, handLeft, handLeft))
     features.extend(norm_to_distance(spineShoulder, shoulderRight, shoulderRight))
     features.extend(norm_to_distance(shoulderRight, elbowRight, elbowRight))
     features.extend(norm_to_distance(elbowRight, wristRight, wristRight))
+    features.extend(norm_to_distance(wristRight, handRight, handRight))
     return features
 
 
@@ -152,17 +158,17 @@ def denorm_from_torso(features):
     # pelvis
     pelvis = np.array([0, 0, 0])
 
-    # other joints (spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, shoulderRight, elbowRight, wristRight)
+    # other joints (spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight)
     spine_len = 3.
     features = np.array(features) * spine_len
 
-    return np.vstack((pelvis, np.split(features, 8)))
+    return np.vstack((pelvis, np.split(features, 10)))
 
 
 def denorm_from_vector(features):
     pelvis = np.array([0, 0, 0])
-    v_spineShoulder, v_head, v_shoulderLeft, v_elbowLeft, v_wristLeft, v_shoulderRight, v_elbowRight, v_wristRight \
-        = np.split(np.array(features), 8)
+    v_spineShoulder, v_head, v_shoulderLeft, v_elbowLeft, v_wristLeft, v_handLeft, v_shoulderRight, v_elbowRight, v_wristRight, v_handRight \
+        = np.split(np.array(features), 10)
 
     spine_len = 3.
     spineShoulder = v_spineShoulder * spine_len
@@ -170,10 +176,12 @@ def denorm_from_vector(features):
     shoulderLeft = spineShoulder + v_shoulderLeft * spine_len / 3.
     elbowLeft = shoulderLeft + v_elbowLeft * spine_len / 2.
     wristLeft = elbowLeft + v_wristLeft * spine_len / 2.
+    handLeft = wristLeft + v_handLeft * spine_len / 4.
     shoulderRight = spineShoulder + v_shoulderRight * spine_len / 3.
     elbowRight = shoulderRight + v_elbowRight * spine_len / 2.
     wristRight = elbowRight + v_wristRight * spine_len / 2.
+    handRight = wristRight + v_handRight * spine_len / 4.
 
     return np.vstack((pelvis, spineShoulder, head,
-                      shoulderLeft, elbowLeft, wristLeft,
-                      shoulderRight, elbowRight, wristRight))
+                      shoulderLeft, elbowLeft, wristLeft, handLeft,
+                      shoulderRight, elbowRight, wristRight, handRight))

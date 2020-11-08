@@ -34,10 +34,10 @@ class Artist:
                 ret_artists = list()
                 for idx in range(self.n_plot):
                     self.init_axis(self.axes[idx])
-                    pelvis, neck, head, lshoulder, lelbow, lwrist, rshoulder, relbow, rwrist = features[idx]
+                    pelvis, neck, head, lshoulder, lelbow, lwrist, lhand, rshoulder, relbow, rwrist, rhand = features[idx]
                     ret_artists.extend(self.draw_parts(self.axes[idx], [pelvis, neck, head]))
-                    ret_artists.extend(self.draw_parts(self.axes[idx], [neck, lshoulder, lelbow, lwrist]))
-                    ret_artists.extend(self.draw_parts(self.axes[idx], [neck, rshoulder, relbow, rwrist]))
+                    ret_artists.extend(self.draw_parts(self.axes[idx], [neck, lshoulder, lelbow, lwrist, lhand]))
+                    ret_artists.extend(self.draw_parts(self.axes[idx], [neck, rshoulder, relbow, rwrist, rhand]))
 
                     result = "\n".join(wrap(results[idx], 15)) if results[idx] is not None else ''
                     ret_artists.append(self.axes[idx].text(0, 0, 0, f"{result}\n{frame_info[idx]}", fontsize=20))

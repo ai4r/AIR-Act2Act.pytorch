@@ -7,9 +7,10 @@ from user.constants import SUBACTION_NAMES
 ROBOT_BEHAVIORS = dict()
 ROBOT_BEHAVIORS[0] = 'stand'
 ROBOT_BEHAVIORS[1] = 'bow'
-ROBOT_BEHAVIORS[2] = 'handshake'
-ROBOT_BEHAVIORS[3] = 'hug'
-ROBOT_BEHAVIORS[4] = 'avoid'
+ROBOT_BEHAVIORS[2] = 'approach'
+ROBOT_BEHAVIORS[3] = 'handshake'
+ROBOT_BEHAVIORS[4] = 'hug'
+ROBOT_BEHAVIORS[5] = 'avoid'
 
 
 def select_behavior(user_behaviors):
@@ -20,6 +21,9 @@ def select_behavior(user_behaviors):
     if all(SUBACTION_NAMES[behavior] == "not shown" for behavior in user_behaviors[:-1]):
         if SUBACTION_NAMES[user_behaviors[-1]] == "stand" or SUBACTION_NAMES[user_behaviors[-1]] == "open the door":
             return 'bow'
+
+    if all("call" in SUBACTION_NAMES[behavior] for behavior in user_behaviors):
+        return 'approach'
 
     if all(SUBACTION_NAMES[behavior] == "raise right hand" for behavior in user_behaviors):
         return 'handshake'

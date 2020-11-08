@@ -1,4 +1,4 @@
-from math import atan2, degrees
+from math import atan2, degrees, sqrt, cos, sin
 
 POSES = dict()
 POSES['stand'] = \
@@ -9,6 +9,10 @@ POSES['bow'] = \
     [-0.826445043087, 0.0681400820613,
      1.33279013634, 0.0903749540448, 0., -0.0986629277468, -1.69248425961,
      1.33279013634, -0.0903749540448, 0., 0.0986629277468, 1.69248425961]
+POSES['approach'] = \
+    [-0.0357290804386, .0772484987974,
+     1.7656172514, 0.104678653181, 0., -0.113438166678, -1.71877264977,
+     1.7656172514, -0.104678653181, 0., 0.113438166678, 1.71877264977]
 POSES['handshake'] = \
     [-0.0357313230634, 0.0772484987974,
      1.7656172514, 0.104678653181, 0., -0.113438166678, -1.71877264977,
@@ -31,6 +35,8 @@ def adapt_behavior(behavior, pose=None):
         return POSES[behavior]
 
     # behaviors should be adapted
+    if behavior == 'approach':
+        return approach(pose)
     if behavior == 'hug':
         return hug(pose)
     if behavior == 'handshake':
@@ -39,6 +45,24 @@ def adapt_behavior(behavior, pose=None):
         return avoid(pose)
 
     raise Exception(f"Wrong behavior name: {behavior}")
+
+
+# adapt approach behavior
+def approach(pose):
+    shoulder_pos_x = pose[20]['x']
+    shoulder_pos_z = pose[20]['z']
+
+    theta = atan2(shoulder_pos_x, shoulder_pos_z)
+
+    dist_to_user = sqrt(shoulder_pos_x ** 2 + shoulder_pos_z ** 2)
+    dist_to_move = max(0.0, dist_to_user - 1.0)
+
+    x_to_move = dist_to_move * cos(theta)
+    y_to_move = dist_to_move * sin(theta)
+
+    adapted_pose = list(POSES['approach'])
+    adapted_pose.extend([x_to_move, y_to_move, theta])
+    return adapted_pose
 
 
 # adapt hug behavior

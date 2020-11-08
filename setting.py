@@ -11,7 +11,7 @@ NORM_METHOD = 'vector'
 
 # actions to train or test
 # ACTIONS = ["A%03d" % a for a in range(1, 11)]
-ACTIONS = ['A001', 'A004', 'A005', 'A006', 'A008']
+ACTIONS = ['A001', 'A003', 'A004', 'A005', 'A006', 'A008']
 
 #  paths
 TRAIN_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), r'data files\train data')
