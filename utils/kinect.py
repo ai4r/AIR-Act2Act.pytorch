@@ -20,6 +20,25 @@ SKELETON_COLORS = [pygame.color.THECOLORS["red"],
                    pygame.color.THECOLORS["yellow"],
                    pygame.color.THECOLORS["violet"]]
 
+# Kinect v.2 camera coefficients
+COEFFICIENTS = dict()
+
+COEFFICIENTS['cfx'] = 1144.361  # (mm)
+COEFFICIENTS['cfy'] = 1147.337  # (mm)
+COEFFICIENTS['cu0'] = 966.359
+COEFFICIENTS['cv0'] = 548.038
+
+COEFFICIENTS['dfx'] = 388.198  # (mm)
+COEFFICIENTS['dfy'] = 389.033  # (mm)
+COEFFICIENTS['du0'] = 253.270
+COEFFICIENTS['dv0'] = 213.934
+
+COEFFICIENTS['k1'] = 0.108
+COEFFICIENTS['k2'] = -0.125
+COEFFICIENTS['k3'] = 0.062
+COEFFICIENTS['p1'] = -0.001
+COEFFICIENTS['p2'] = -0.003
+
 
 class BodyGameRuntime(object):
     def __init__(self):

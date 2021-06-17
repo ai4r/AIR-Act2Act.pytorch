@@ -28,12 +28,14 @@ Finally, the selected behavior is modified according to the user's posture.
     │   ├── classifier.py           # Train and test the DNN models for user behavior recognition
     │   ├── constants.py            # Global constants
     │   ├── data.py                 # Get AIR-Act2Act dataset
-    │   ├── k_clustering.py         # Label user behavior classes using K-means clustering
+    │   ├── label.py                # Label user behavior classes using K-means clustering
     │   └── model.py                # Deep neural network
     ├── utils/
     │   ├── AIR.py                  # Read AIR-Act2Act data files
     │   ├── draw.py                 # Draw 3D skeletons
+    │   ├── kcluster.py             # K-means clustering
     │   ├── kinect.py               # Run Kinect camera
+    │   ├── openpose.py             # Detect 2D skeleton from RGB image
     │   └── robot.py                # Convert between 3D joint position and robot joint angles
     ├── .gitignore
     ├── LICENSE.md
@@ -59,7 +61,7 @@ cuda 9.2 installation - [here](https://developer.nvidia.com/cuda-92-download-arc
 ## Prerequisites
 
 ### To train and test with the AIR-Act2Act dataset 
-We already provide a trained model in 'models/lstm/vector/model_0026.pth'.  
+We already provide a trained model in 'models/lstm/A001A004A005A007A008/vector/2D/False/model_0048.pth'.  
 But if you want to train the model by yourself, download the [AIR-Act2Act dataset](http://nanum.etri.re.kr:8080/etriPortal/login?language=en).  
 You need to join as a member to get to the download page.  
 The data all you need is the refined 3D skeleton files (.joint) of P001-P050.  
@@ -74,7 +76,7 @@ If you want to use a virtual Pepper robot, you need to download [Choregraphe](ht
 We recommend to download **Choregraphe for PC** for **NAO V6**.  
 After installing Choregraphe, launch it.  
 Then, cilck [Edit] - [Preferences] - [Virtual Robot] and select Pepper for Robot model.  
-You need to remember the port number written at the bottom.  
+You need to remember the port number which is written at the bottom.  
 
 
 ## User recognition

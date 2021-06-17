@@ -1,6 +1,7 @@
 import os
 import simplejson as json
 import numpy as np
+from utils.kinect import COEFFICIENTS
 
 
 def read_joint(path):
@@ -16,7 +17,18 @@ def read_joint(path):
     return body_info
 
 
-def vectorize(joint):
+def vectorize(joint, type):
+    if type == '2D':
+        return vectorize2D(joint)
+    if type == '3D':
+        return vectorize3D(joint)
+
+
+def vectorize2D(joint):
+    return np.array([joint['colorX'], joint['colorY']])
+
+
+def vectorize3D(joint):
     return np.array([joint['x'], joint['y'], joint['z']]).astype('float32')
 
 
@@ -27,10 +39,10 @@ def move_camera_to_front(body_info, body_id):
 
         # joints of the trunk
         reference_body = body_info[f][body_id]["joints"]
-        r_4_kinect = vectorize(reference_body[4])  # shoulderLeft
-        r_8_kinect = vectorize(reference_body[8])  # shoulderRight
+        r_4_kinect = vectorize3D(reference_body[4])  # shoulderLeft
+        r_8_kinect = vectorize3D(reference_body[8])  # shoulderRight
         r_20_kinect = (r_4_kinect + r_8_kinect) / 2  # spineShoulder
-        r_0_kinect = vectorize(reference_body[0])  # torso
+        r_0_kinect = vectorize3D(reference_body[0])  # torso
         dist_to_camera = np.linalg.norm(r_20_kinect)
 
         # find the front direction vector
@@ -57,9 +69,17 @@ def move_camera_to_front(body_info, body_id):
     y_c = up / norm_up
     x_c = np.cross(y_c, z_c)
 
+    # 3d-to-2d projection coefficients
+    co = COEFFICIENTS
+
+    for f in range(start_frame):
+        body = body_info[f][body_id]["joints"]
+        for j in range(len(body)):
+            body[j]['colorX'] = 0.
+            body[j]['colorY'] = 0.
+
     for f in range(start_frame, len(body_info)):
         body = body_info[f][body_id]["joints"]
-        # for all the 25 joints within each skeleton
         for j in range(len(body)):
             joint = body[j]
 
@@ -71,23 +91,41 @@ def move_camera_to_front(body_info, body_id):
             joint['y'] = y
             joint['z'] = z
 
+            # project 3d point cloud to 2d depth map
+            r2 = pow(x, 2) + pow(y, 2)
+            x_corrected = x * (1 + co['k1'] * r2 + co['k2'] * pow(r2, 2) + co['k3'] * pow(r2, 3)) + \
+                          2 * co['p1'] * x * y + co['p2'] * (r2 + 2 * pow(x, 2))
+            y_corrected = y * (1 + co['k1'] * r2 + co['k2'] * pow(r2, 2) + co['k3'] * pow(r2, 3)) + \
+                          co['p1'] * (r2 + 2 * pow(y, 2)) + 2 * co['p2'] * x * y
+
+            joint['depthX'] = co['du0'] + co['dfx'] * x_corrected / z
+            joint['depthY'] = co['dv0'] - co['dfy'] * y_corrected / z
+
+            joint['colorX'] = co['cu0'] + co['cfx'] * x_corrected / z
+            joint['colorY'] = co['cv0'] - co['cfy'] * y_corrected / z
+
     return body_info
 
 
-def norm_features(body, method='torso'):
+def norm_features(body, method='vector', type='3D', b_hand=True):
+    if method != 'torso' and method != 'vector':
+        raise Exception(f'Wrong normalization method: {method}')
+    if type != '2D' and type != '3D':
+        raise Exception(f'Wrong input data type: {type}')
+    if not isinstance(b_hand, bool):
+        raise Exception(f'Wrong hand data type: {b_hand}')
+
     if method == 'torso':
-        return norm_to_torso(body)
-    elif method == 'vector':
-        return norm_to_vector(body)
-    else:
-        raise Exception(f'Wrong normalization type: {method}')
+        return norm_to_torso(body, type, b_hand)
+    if method == 'vector':
+        return norm_to_vector(body, type, b_hand)
 
 
 # move origin to torso and
 # normalize to the distance between torso and spineShoulder
-def norm_to_torso(body):
+def norm_to_torso(body, type, b_hand):
     torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight = \
-        get_upper_body_joints(body)
+        get_upper_body_joints(body, type)
 
     features = list()
     features.extend(norm_to_distance(torso, spineShoulder, spineShoulder))
@@ -95,27 +133,29 @@ def norm_to_torso(body):
     features.extend(norm_to_distance(torso, spineShoulder, shoulderLeft))
     features.extend(norm_to_distance(torso, spineShoulder, elbowLeft))
     features.extend(norm_to_distance(torso, spineShoulder, wristLeft))
-    features.extend(norm_to_distance(torso, spineShoulder, handLeft))
+    if b_hand:
+        features.extend(norm_to_distance(torso, spineShoulder, handLeft))
     features.extend(norm_to_distance(torso, spineShoulder, shoulderRight))
     features.extend(norm_to_distance(torso, spineShoulder, elbowRight))
     features.extend(norm_to_distance(torso, spineShoulder, wristRight))
-    features.extend(norm_to_distance(torso, spineShoulder, handRight))
+    if b_hand:
+        features.extend(norm_to_distance(torso, spineShoulder, handRight))
     return features
 
 
-def get_upper_body_joints(body):
-    shoulderRight = vectorize(body[8])
-    shoulderLeft = vectorize(body[4])
-    elbowRight = vectorize(body[9])
-    elbowLeft = vectorize(body[5])
-    wristRight = vectorize(body[10])
-    wristLeft = vectorize(body[6])
-    handRight = vectorize(body[23])
-    handLeft = vectorize(body[21])
+def get_upper_body_joints(body, type):
+    shoulderRight = vectorize(body[8], type)
+    shoulderLeft = vectorize(body[4], type)
+    elbowRight = vectorize(body[9], type)
+    elbowLeft = vectorize(body[5], type)
+    wristRight = vectorize(body[10], type)
+    wristLeft = vectorize(body[6], type)
+    handRight = vectorize(body[23], type)
+    handLeft = vectorize(body[21], type)
 
-    torso = vectorize(body[0])
-    spineShoulder = vectorize(body[20])
-    head = vectorize(body[3])
+    torso = vectorize(body[0], type)
+    spineShoulder = vectorize(body[20], type)
+    head = vectorize(body[3], type)
 
     return torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight
 
@@ -127,9 +167,9 @@ def norm_to_distance(origin, basis, joint):
     return result
 
 
-def norm_to_vector(body):
+def norm_to_vector(body, type, b_hand):
     torso, spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight = \
-        get_upper_body_joints(body)
+        get_upper_body_joints(body, type)
 
     features = list()
     features.extend(norm_to_distance(torso, spineShoulder, spineShoulder))
@@ -137,38 +177,60 @@ def norm_to_vector(body):
     features.extend(norm_to_distance(spineShoulder, shoulderLeft, shoulderLeft))
     features.extend(norm_to_distance(shoulderLeft, elbowLeft, elbowLeft))
     features.extend(norm_to_distance(elbowLeft, wristLeft, wristLeft))
-    features.extend(norm_to_distance(wristLeft, handLeft, handLeft))
+    if b_hand:
+        features.extend(norm_to_distance(wristLeft, handLeft, handLeft))
     features.extend(norm_to_distance(spineShoulder, shoulderRight, shoulderRight))
     features.extend(norm_to_distance(shoulderRight, elbowRight, elbowRight))
     features.extend(norm_to_distance(elbowRight, wristRight, wristRight))
-    features.extend(norm_to_distance(wristRight, handRight, handRight))
+    if b_hand:
+        features.extend(norm_to_distance(wristRight, handRight, handRight))
     return features
 
 
-def denorm_features(features, method='torso'):
+def denorm_features(features, method='vector', type='3D', b_hand=True):
+    if method != 'torso' and method != 'vector':
+        raise Exception(f'Wrong normalization method: {method}')
+    if type != '2D' and type != '3D':
+        raise Exception(f'Wrong input data type: {type}')
+    if not isinstance(b_hand, bool):
+        raise Exception(f'Wrong hand data type: {b_hand}')
+
     if method == 'torso':
-        return denorm_from_torso(features)
-    elif method == 'vector':
-        return denorm_from_vector(features)
-    else:
-        raise Exception(f'Wrong normalization type: {method}')
+        return denorm_from_torso(features, type, b_hand)
+    if method == 'vector':
+        return denorm_from_vector(features, type, b_hand)
 
 
-def denorm_from_torso(features):
+def denorm_from_torso(features, type, b_hand):
     # pelvis
-    pelvis = np.array([0, 0, 0])
+    pelvis = np.array([0, 0, 0]) if type == '2D' else np.array([0, 0])
 
     # other joints (spineShoulder, head, shoulderLeft, elbowLeft, wristLeft, handLeft, shoulderRight, elbowRight, wristRight, handRight)
     spine_len = 3.
     features = np.array(features) * spine_len
 
-    return np.vstack((pelvis, np.split(features, 10)))
+    if b_hand:
+        joints = np.vstack((pelvis, np.split(features, 10)))
+    else:
+        joints = np.vstack((pelvis, np.split(features, 8)))
+        joints = np.insert(joints, 8, joints[7], axis=0)
+        joints = np.insert(joints, 4, joints[3], axis=0)
+
+    return joints
 
 
-def denorm_from_vector(features):
-    pelvis = np.array([0, 0, 0])
-    v_spineShoulder, v_head, v_shoulderLeft, v_elbowLeft, v_wristLeft, v_handLeft, v_shoulderRight, v_elbowRight, v_wristRight, v_handRight \
-        = np.split(np.array(features), 10)
+def denorm_from_vector(features, type, b_hand):
+    pelvis = np.array([0, 0, 0]) if type == '3D' else np.array([0, 0])
+    if b_hand:
+        v_spineShoulder, v_head, \
+        v_shoulderLeft, v_elbowLeft, v_wristLeft, v_handLeft, \
+        v_shoulderRight, v_elbowRight, v_wristRight, v_handRight \
+            = np.split(np.array(features), 10)
+    else:
+        v_spineShoulder, v_head, \
+        v_shoulderLeft, v_elbowLeft, v_wristLeft, \
+        v_shoulderRight, v_elbowRight, v_wristRight \
+            = np.split(np.array(features), 8)
 
     spine_len = 3.
     spineShoulder = v_spineShoulder * spine_len
@@ -176,12 +238,17 @@ def denorm_from_vector(features):
     shoulderLeft = spineShoulder + v_shoulderLeft * spine_len / 3.
     elbowLeft = shoulderLeft + v_elbowLeft * spine_len / 2.
     wristLeft = elbowLeft + v_wristLeft * spine_len / 2.
-    handLeft = wristLeft + v_handLeft * spine_len / 4.
     shoulderRight = spineShoulder + v_shoulderRight * spine_len / 3.
     elbowRight = shoulderRight + v_elbowRight * spine_len / 2.
     wristRight = elbowRight + v_wristRight * spine_len / 2.
-    handRight = wristRight + v_handRight * spine_len / 4.
 
-    return np.vstack((pelvis, spineShoulder, head,
-                      shoulderLeft, elbowLeft, wristLeft, handLeft,
-                      shoulderRight, elbowRight, wristRight, handRight))
+    if not b_hand:
+        return np.vstack((pelvis, spineShoulder, head,
+                          shoulderLeft, elbowLeft, wristLeft, wristLeft,
+                          shoulderRight, elbowRight, wristRight, wristRight))
+    else:
+        handLeft = wristLeft + v_handLeft * spine_len / 4.
+        handRight = wristRight + v_handRight * spine_len / 4.
+        return np.vstack((pelvis, spineShoulder, head,
+                          shoulderLeft, elbowLeft, wristLeft, handLeft,
+                          shoulderRight, elbowRight, wristRight, handRight))

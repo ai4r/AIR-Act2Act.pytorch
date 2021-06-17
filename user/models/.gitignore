@@ -1,5 +1,15 @@
-# Ignore everything in this directory
-lstm/vector/*
+# Ignore everything except 1 file
+/lstm/*
+!/lstm/A001A004A005A007A008/
 
-# Except this file
-!/lstm/*/model_0013.pth
+/lstm/A001A004A005A007A008/*
+!/lstm/A001A004A005A007A008/vector/
+
+/lstm/A001A004A005A007A008/vector/*
+!/lstm/A001A004A005A007A008/vector/2D/
+
+/lstm/A001A004A005A007A008/vector/2D/*
+!/lstm/A001A004A005A007A008/vector/2D/False/
+
+/lstm/A001A004A005A007A008/vector/2D/False/*
+!/lstm/A001A004A005A007A008/vector/2D/False/model_0048.pth

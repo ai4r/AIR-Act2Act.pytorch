@@ -6,7 +6,7 @@ import socket
 import simplejson as json
 import argparse
 
-from recognize import test_with_data, test_with_kinect, load_model
+from recognize import test_with_data, test_with_kinect, test_with_webcam, load_model
 from robot.adapter import adapt_behavior
 from robot.selector import select_behavior
 from setting import LSTM_MODEL_PATH
@@ -21,7 +21,7 @@ for model_file in model_files:
 # argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument('--use_robot', help='use robot', action='store_true')
-parser.add_argument('-m', '--mode', type=str, help='mode to run', choices=['data', 'kinect'], required=True)
+parser.add_argument('-m', '--mode', type=str, help='mode to run', choices=['data', 'kinect', 'webcam'], required=True)
 parser.add_argument('-l', '--model', type=int, help='model number', choices=model_numbers, default=26)
 args = parser.parse_args()
 
@@ -44,26 +44,37 @@ def main():
         input_generator = test_with_data(model)
     if args.mode == "kinect":
         input_generator = test_with_kinect(model)
+    if args.mode == "webcam":
+        input_generator = test_with_webcam(model)
 
     # select and adapt behavior
     user_behaviors = list()
+    last_change_time = time.time()
+    prev_behavior = ""
     for user_pose, user_behavior in input_generator:
         if user_behavior is None:
             continue
 
         user_behaviors.append(user_behavior)
-        user_behaviors = user_behaviors[-3:]
-        if len(user_behaviors) < 3:
+        user_behaviors = user_behaviors[-5:]
+        if len(user_behaviors) < 5:
             continue
 
         robot_behavior = select_behavior(user_behaviors)
         if robot_behavior is None:
             continue
 
-        print(robot_behavior)
+        # print("robot:", robot_behavior)
         if args.use_robot:
+            if prev_behavior != robot_behavior:
+                if time.time() - last_change_time < 1.0:
+                    continue
+                else:
+                    last_change_time = time.time()
+
             robot_pose = adapt_behavior(robot_behavior, user_pose)
             send_behavior(cmd_sock, robot_pose)
+            prev_behavior = robot_behavior
 
 
 # wait for connection to server

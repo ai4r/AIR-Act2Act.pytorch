@@ -10,26 +10,32 @@ ROBOT_BEHAVIORS[1] = 'bow'
 ROBOT_BEHAVIORS[2] = 'approach'
 ROBOT_BEHAVIORS[3] = 'handshake'
 ROBOT_BEHAVIORS[4] = 'hug'
-ROBOT_BEHAVIORS[5] = 'avoid'
+ROBOT_BEHAVIORS[5] = 'high-five'
+ROBOT_BEHAVIORS[6] = 'avoid'
 
 
 def select_behavior(user_behaviors):
     if all(SUBACTION_NAMES[behavior] == "stand" for behavior in user_behaviors) or \
-            all("lower" in SUBACTION_NAMES[behavior] for behavior in user_behaviors):
+            all(SUBACTION_NAMES[behavior] == "not shown" for behavior in user_behaviors or \
+            all("lower" in SUBACTION_NAMES[behavior] for behavior in user_behaviors)):
         return 'stand'
 
     if all(SUBACTION_NAMES[behavior] == "not shown" for behavior in user_behaviors[:-1]):
-        if SUBACTION_NAMES[user_behaviors[-1]] == "stand" or SUBACTION_NAMES[user_behaviors[-1]] == "open the door":
+        if SUBACTION_NAMES[user_behaviors[-1]] != "not shown":
             return 'bow'
 
     if all("call" in SUBACTION_NAMES[behavior] for behavior in user_behaviors):
         return 'approach'
+        # return 'stand'
 
     if all(SUBACTION_NAMES[behavior] == "raise right hand" for behavior in user_behaviors):
         return 'handshake'
 
     if all("cry" in SUBACTION_NAMES[behavior] for behavior in user_behaviors):
         return 'hug'
+
+    if all("high-five" in SUBACTION_NAMES[behavior] for behavior in user_behaviors):
+        return 'high-five'
 
     if all("threaten" in SUBACTION_NAMES[behavior] for behavior in user_behaviors):
         return 'avoid'
