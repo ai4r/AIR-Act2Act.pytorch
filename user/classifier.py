@@ -221,7 +221,7 @@ def verify():
                 n_sum = sum(conf_matrix[i])
                 for j in range(len(SUBACTION_NAMES)):
                     conf_matrix[i][j] = conf_matrix[i][j] / n_sum
-                print(n_sum)
+                # print(n_sum)
 
             labels = ["\n".join(wrap(item, 12)) for item in SUBACTION_NAMES]
             plt.figure(figsize=(13, 10))

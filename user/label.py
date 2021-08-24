@@ -12,10 +12,10 @@ from setting import gen_sequence, TRAIN_PATH, TEST_PATH, NORM_METHOD
 
 # action list to test
 # actions = ["A001", "A004", "A005", "A007", "A008"]
-# actions = ["A001", "A003", "A004", "A005", "A006", "A008"]
+actions = ["A001", "A003", "A004", "A005", "A006", "A008"]
 # actions = ["A005"]
 # actions = ['A001', 'A004', 'A005', 'A007', 'A008']
-actions = ["A008"]
+# actions = ["A008"]
 
 # get all data files
 data_files = list()

@@ -45,6 +45,7 @@ Finally, the selected behavior is modified according to the user's posture.
     ├── setting.py                  # Global constants
     ├── preprocess.py               # Generate training and test data
     └── recognize.py                # Demo: recognizing user behaviors
+    └── requirements.txt            # installed packages
 
 
 ## Installation 
@@ -61,7 +62,7 @@ cuda 9.2 installation - [here](https://developer.nvidia.com/cuda-92-download-arc
 ## Prerequisites
 
 ### To train and test with the AIR-Act2Act dataset 
-We already provide a trained model in 'models/lstm/A001A004A005A007A008/vector/2D/False/model_0048.pth'.  
+We already provide a trained model in 'models/lstm/A001A004A005A007A008/vector/2D/False/model_0045.pth'.  
 But if you want to train the model by yourself, download the [AIR-Act2Act dataset](http://nanum.etri.re.kr:8080/etriPortal/login?language=en).  
 You need to join as a member to get to the download page.  
 The data all you need is the refined 3D skeleton files (.joint) of P001-P050.  

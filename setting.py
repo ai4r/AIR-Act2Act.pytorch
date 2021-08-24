@@ -8,16 +8,16 @@ def gen_sequence(data, length):
 
 
 # skeleton features
-INPUT_DATA_TYPE = '2D'  # {'2D', '3D'}
+INPUT_DATA_TYPE = '3D'  # {'2D', '3D'}
 NORM_METHOD = 'vector'  # {'vector', 'torso'}
 B_HANDS = False  # {True, False}
 
 # actions to train or test
 # ACTIONS = ["A%03d" % a for a in range(1, 11)]
-# ACTIONS = ['A001', 'A003', 'A004', 'A005', 'A006', 'A008']
+ACTIONS = ['A001', 'A003', 'A004', 'A005', 'A006', 'A008']
 # ACTIONS = ['A001', 'A003', 'A004', 'A005', 'A006', 'A007', 'A008']
 # ACTIONS = ['A004', 'A005', 'A006', 'A007']
-ACTIONS = ['A001', 'A004', 'A005', 'A007', 'A008']
+# ACTIONS = ['A001', 'A004', 'A005', 'A007', 'A008']
 
 #  paths
 PROB_TRAIN = 0.9

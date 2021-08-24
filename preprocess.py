@@ -81,33 +81,30 @@ def gen_datafiles():
 def split_train_valid():
     reset_train = glob.glob(os.path.join(TRAIN_PATH, "*.npz"))
     for file in reset_train:
-        shutil.move(file, os.path.join("./data files", os.path.basename(file)))
+        shutil.move(file, os.path.join(DATA_PATH, os.path.basename(file)))
     reset_valid = glob.glob(os.path.join(TEST_PATH, "*.npz"))
     for file in reset_valid:
-        shutil.move(file, os.path.join("./data files", os.path.basename(file)))
+        shutil.move(file, os.path.join(DATA_PATH, os.path.basename(file)))
 
-    files = glob.glob(os.path.join(DATA_PATH, "*.npz"))
     action_names = list()
-
+    files = glob.glob(os.path.join(DATA_PATH, "*.npz"))
     for file in files:
         file_name = os.path.basename(file)
         action_name = file_name[4:8]
         if action_name not in action_names:
             action_names.append(action_name)
 
-    action_files = list()
+    train = list()
     for action_name in action_names:
-        action_files.extend(glob.glob(os.path.join(DATA_PATH, f"*{action_name}*.npz")))
-
-    data_names = list()
-    for action_file in action_files:
-        file_name = os.path.basename(action_file)
-        data_name = file_name[:4] if DEVIDE == 'subject' else file_name[:8]
-        if data_name not in data_names:
-            data_names.append(data_name)
-
-    random.shuffle(data_names)
-    train = data_names[:int(len(data_names)*PROB_TRAIN)]
+        data_names = list()
+        action_files = glob.glob(os.path.join(DATA_PATH, f"*{action_name}*.npz"))
+        for action_file in action_files:
+            file_name = os.path.basename(action_file)
+            data_name = file_name[:4] if DEVIDE == 'subject' else file_name[:8]
+            if data_name not in data_names:
+                data_names.append(data_name)
+        random.shuffle(data_names)
+        train.extend(data_names[:int(len(data_names)*PROB_TRAIN)])
 
     for file in files:
         file_name = os.path.basename(file)
