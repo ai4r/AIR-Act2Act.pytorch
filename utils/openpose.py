@@ -2,9 +2,12 @@
 # It requires OpenCV installed for Python
 import sys
 import os
+import cv2
 from sys import platform
 
-openpose_path = "C:/Users/wrko/Desktop/openpose"
+from setting import W_VIDEO, H_VIDEO
+
+openpose_path = "C:/Users/wrko/Desktop/Code/openpose"
 try:
     # Windows Import
     if platform == "win32":
@@ -43,3 +46,23 @@ def pose_keypoints(image):
 
     # Return Results
     return datum.poseKeypoints, datum.cvOutputData
+
+
+def main():
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, W_VIDEO)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H_VIDEO)
+
+    while True:
+        # 2d skeleton from video
+        ret, frame = cap.read()
+        key_points, output_data = pose_keypoints(frame)
+
+        output_data = cv2.flip(output_data, 3)
+        cv2.imshow(f'{W_VIDEO}x{H_VIDEO}', output_data)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+
+if __name__ == '__main__':
+    main()

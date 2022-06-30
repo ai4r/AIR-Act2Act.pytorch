@@ -31,6 +31,10 @@ POSES['avoid'] = \
      -0.09544009163085918, -0.07582597981979501, -1.342600244783586, -1.413778030964168, 0.,
      0.33340909260840057, -0.13373375503589732, 1.1374428138295134, 1.4061889935828833, 0.]
 
+JOINT_NAMES = ['HipPitch', 'HeadPitch',
+               'LShoulderPitch', 'LShoulderRoll', 'LElbowYaw', 'LElbowRoll', 'LWristYaw',
+               'RShoulderPitch', 'RShoulderRoll', 'RElbowYaw', 'RElbowRoll', 'RWristYaw']
+
 
 def adapt_behavior(behavior, pose=None):
     # behaviors no need to be adapted
@@ -153,8 +157,8 @@ def highfive(pose):
 def highfive_3D(pose):
     adapted_pose = list(POSES['high-five'])
 
-    right_hand_pos_x = pose[10]['colorX']
-    right_hand_pos_y = pose[10]['colorY']
+    right_hand_pos_x = pose[10]['x']
+    right_hand_pos_y = pose[10]['y']
 
     angle_y_to_right_hand = (H_VIDEO - right_hand_pos_y) / H_VIDEO * 180  # 180 to 0
     angle_y_to_right_hand = min(max(angle_y_to_right_hand, 45), 120)

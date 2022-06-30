@@ -52,11 +52,13 @@ Finally, the selected behavior is modified according to the user's posture.
 The scripts are tested on Windows 10 and Anaconda Python 3.6.  
 You also need to install the following modules.  
 
-$ pip install simplejson tqdm matplotlib argparse  
-$ pip install scikit-learn==0.22.1  
+```
+$ conda install pytorch==1.1.0 torchvision==0.3.0 cudatoolkit=9.0 -c pytorch  
+$ pip install simplejson tqdm matplotlib seaborn argparse opencv-python  
 $ pip install pandas==0.25.0  
-$ conda install pytorch=0.4.1 cuda92 -c pytorch  
-cuda 9.2 installation - [here](https://developer.nvidia.com/cuda-92-download-archive?target_os=Windows&target_arch=x86_64&target_version=10&target_type=exelocal)
+$ pip install scikit-learn==0.22.1  
+```
+[CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) 9.0 installation
 
     
 ## Prerequisites
@@ -68,9 +70,17 @@ You need to join as a member to get to the download page.
 The data all you need is the refined 3D skeleton files (.joint) of P001-P050.  
 For more information on the AIR-Act2Act dataset, please visit [here](https://ai4robot.github.io/air-act2act-en/#). 
 
+### To test with a Webcam
+If you want to use a Webcam to test, you need to download [OpenPose v1.6.0](https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases/tag/v1.6.0).   
+Then, install the OpenPose using [CMake](https://cmake.org/download/) following the [instructions](https://velog.io/@oneul1213/OpenPose-%EA%B0%9C%EC%9A%94-%EB%B0%8F-%EC%84%A4%EC%B9%98%ED%95%98%EA%B8%B0).  
+After setting ```openpose_path```, you can test the OpenPose by running ```python utils\openpose.py```.
+
 ### To test with a Kinect camera
 If you want to use a Kinect camera to test, you need to install [Kinect for Windows SDK 2.0](https://www.microsoft.com/en-us/download/details.aspx?id=44561).    
 Then, install the Pykinect2 and PyGame modules: ```pip install pykinect2 pygame```.  
+You can test your Kinect sensor by running ```python utils\kinect.py```  
+To solve ```AssertionError: 80```, replace the ```.py``` files in ```Lib\site-packages\pykinect2``` with [these files](https://github.com/Kinect/PyKinect2/tree/master/pykinect2).  
+To solve ```ImportError("Wrong version")```, reinstall comtypes as ```pip install comtypes==1.1.4```  
   
 ### To test with a virtual Pepper robot
 If you want to use a virtual Pepper robot, you need to download [Choregraphe](https://www.robotlab.com/choregraphe-download).  
@@ -92,35 +102,53 @@ The user recognition is performed at 10 fps.
 <img src="https://user-images.githubusercontent.com/13827622/89415107-63400f00-d766-11ea-9008-6634fb496087.png" width="60%">  
 
 ### How to train with AIR-Act2Act data (optional)
-1. Put all ".joint" files of the AIR-Act2Act dataset in 'joint files/'.  
-2. Run ```python preprocess.py``` to extract training and test data.   
-3. Run ```python user\classifier.py -m train``` to train the model.  
-   All trained models are stored in 'models/lstm/'
-
-### How to verify a trained model
-1. Run ```python user\classifier.py -m verify```.  
-2. Enter the model number to verify, into the command line.  
-3. The average accuracy and loss of the model will be printed on the command line as follows:  
-    ```  
-    Validation Loss: 0.03972, Validation Acc: 0.98527  
+1. Put all ".joint" files of the AIR-Act2Act dataset in ```joint files/```.   
+1. Run ```python preprocess.py``` to extract training and test data.   
+1. Run ```python user\label.py``` to label sub-action classes for all data.    
+    1. If the K-means clustering models do not exist in ```user/models/k-means/```,  
+    run ```python utils\kcluster.py``` after changing parameters.  
+1. Change parameters in ```setting.py```.  
     ```
-4. The confusion matrix of the model will be displayed on a pop-up window.  
+    INPUT_DATA_TYPE = '2D'  # {'2D', '3D'}
+    NORM_METHOD = 'vector'  # {'vector', 'torso'}
+    B_HANDS = False  # {True, False}
+    ACTIONS = ['A001', 'A004', 'A005', 'A007', 'A008']
+    ```
+1. Run ```python user\classifier.py -m train``` to train the model.  
+   (All trained models are stored in ```user/models/lstm/```)
+
+### How to verify the trained model
+1. Run ```python user\classifier.py -m verify```.  
+1. Enter the model number to verify, into the command line.  
+1. The average accuracy and loss of the model will be printed on the command line as follows:  
+    ```  
+    Test Loss: 0.03972, Test Acc: 0.98527  
+    ```
+1. The confusion matrix of the model will be displayed on a pop-up window.  
     <img src="https://user-images.githubusercontent.com/13827622/91275401-137bc300-e7bb-11ea-9029-6656fa4607c3.png" width="70%">  
 
-### How to test a trained model with AIR-Act2Act data
+### How to test with AIR-Act2Act data
 1. Run ```python recognize.py -m data```.  
-2. If you want to test a specific model, e.g. 'model_0010.pth',  
+1. If you want to test a specific model, e.g. 'model_0010.pth',  
    run ```python recognize.py -m data -l 10```.  
-2. Enter the data number to test, into the command line.  
-3. The recognition results will be displayed on a pop-up window.  
+1. Enter the data number to test, into the command line.  
+1. The recognition results will be displayed on a pop-up window.  
 
-### How to test a trained model with Kinect camera
+### How to test with Webcam (in real-time)
+1. Set ```INPUT_DATA_TYPE = '2D``` in ```setting.py```.  
+1. Connect to the Webcam.
+1. Run ```python recognize.py -m webcam```.  
+1. If you want to test a specific model, e.g. 'model_0010.pth',  
+   run ```python recognize.py -m webcam -l 10```.  
+1. The captured video and the recognition results will be displayed on pop-up windows.  
+
+### How to test with Kinect camera (in real-time)
+1. Set ```INPUT_DATA_TYPE = '3D``` in ```setting.py```.  
 1. Connect to the Kinect camera.
-2. Run ```python recognize.py -m kinect```.  
-3. If you want to test a specific model, e.g. 'model_0010.pth',  
+1. Run ```python recognize.py -m kinect```.  
+1. If you want to test a specific model, e.g. 'model_0010.pth',  
    run ```python recognize.py -m kinect -l 10```.  
-4. The captured video and the recognition results will be displayed on pop-up windows.  
-
+1. The captured video and the recognition results will be displayed on pop-up windows.  
 
 ## Robot behavior generation
 The robot generates a behavior that suits the user's behavior according to predefined rules.  
@@ -129,35 +157,45 @@ It will be updated soon.
 
 ### How to test with AIR-Act2Act data
 1. Run ```python generate.py -m data```.  
-2. If you want to test a specific model, e.g. 'model_0010.pth',  
+1. If you want to test a specific model, e.g. 'model_0010.pth',  
    run ```python generate.py -m data -l 10```   
-3. Enter the data number to test into the command line.   
-4. The input user behavior will be displayed on a pop-up window.  
+1. Enter the data number to test into the command line.   
+1. The input user behavior will be displayed on a pop-up window.  
    The selected robot behavior will be printed on the command line as follows:  
     ```  
-    stand  
-    stand  
+    robot: stand  
+    robot: stand  
     ...  
-    handshake  
-    handshake  
+    robot: handshake  
+    robot: handshake  
     ...  
-    avoid  
+    robot: avoid  
     ```  
     
-### How to test with Kinect camera
+### How to test with Webcam (in real-time)
+1. Set ```INPUT_DATA_TYPE = '2D``` in ```setting.py```.  
+1. Connect to the Webcam.
+1. Run ```python generate.py -m webcam```.  
+1. If you want to test a specific model, e.g. 'model_0010.pth',  
+   run ```python generate.py -m webcam -l 10```   
+1. The captured video and the recognition results will be displayed on pop-up windows.  
+   The selected robot behavior will be printed on the command line.
+    
+### How to test with Kinect camera (in real-time)
+1. Set ```INPUT_DATA_TYPE = '3D``` in ```setting.py```.  
 1. Connect to the Kinect camera.
-2. Run ```python generate.py -m kinect```.  
-3. If you want to test a specific model, e.g. 'model_0010.pth',  
+1. Run ```python generate.py -m kinect```.  
+1. If you want to test a specific model, e.g. 'model_0010.pth',  
    run ```python generate.py -m kinect -l 10```   
-4. The captured video and the recognition results will be displayed on pop-up windows.  
+1. The captured video and the recognition results will be displayed on pop-up windows.  
    The selected robot behavior will be printed on the command line.
 
 ### How to test with virtual Pepper robot
 1. Launch Choregraphe and connect to a virtual Pepper robot.  
-2. To send commands to Choregraphe, open command prompt and run server:  
-   ```server\server.exe -p {port number}```  
-3. Open an other command prompt, run ```python generate.py -m {mode}, -l {model number} --use_robot```.  
-4. The captured video and the recognition results will be displayed on pop-up windows.  
+1. To send commands to Choregraphe, open command prompt and run server:  
+   ```robot\server\server-1.0.exe -p {port number} -r pepper```  
+1. Open an other command prompt, run ```python generate.py -m {mode}, -l {model number} --use_robot```.  
+1. The captured video and the recognition results will be displayed on pop-up windows.  
    The selected robot behavior will be generated by a virtual Pepper in Choregraphe.  
       
 

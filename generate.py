@@ -7,7 +7,8 @@ import simplejson as json
 import argparse
 
 from recognize import test_with_data, test_with_kinect, test_with_webcam, load_model
-from robot.adapter import adapt_behavior
+from recognize import load_kinect_module, load_openpose_module
+from robot.adapter import adapt_behavior, JOINT_NAMES
 from robot.selector import select_behavior
 from setting import LSTM_MODEL_PATH
 
@@ -35,7 +36,8 @@ def main():
         HOST = "127.0.0.1"
         CMD_PORT = 10240
         cmd_sock = init_socket(HOST, CMD_PORT)
-        send_behavior(cmd_sock, adapt_behavior('stand'))
+        stand_pose = {JOINT_NAMES[idx]: float(adapt_behavior('stand')[idx]) for idx in range(len(JOINT_NAMES))}
+        send_behavior(cmd_sock, stand_pose)
     else:
         cmd_sock = None
 
@@ -43,8 +45,10 @@ def main():
     if args.mode == "data":
         input_generator = test_with_data(model)
     if args.mode == "kinect":
+        load_kinect_module()
         input_generator = test_with_kinect(model)
     if args.mode == "webcam":
+        load_openpose_module()
         input_generator = test_with_webcam(model)
 
     # select and adapt behavior
@@ -64,7 +68,7 @@ def main():
         if robot_behavior is None:
             continue
 
-        # print("robot:", robot_behavior)
+        print("robot:", robot_behavior)
         if args.use_robot:
             if prev_behavior != robot_behavior:
                 if time.time() - last_change_time < 1.0:
@@ -73,7 +77,8 @@ def main():
                     last_change_time = time.time()
 
             robot_pose = adapt_behavior(robot_behavior, user_pose)
-            send_behavior(cmd_sock, robot_pose)
+            pose = {JOINT_NAMES[idx]: float(robot_pose[idx]) for idx in range(len(JOINT_NAMES))}
+            send_behavior(cmd_sock, pose)
             prev_behavior = robot_behavior
 
 

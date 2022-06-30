@@ -1,7 +1,16 @@
 import os
 import simplejson as json
 import numpy as np
-from utils.kinect import COEFFICIENTS
+
+# Kinect v.2 camera coefficients
+KINECT_CO = dict()
+KINECT_CO['cfx'], KINECT_CO['cfy'] = 1144.361, 1147.337  # (mm)
+KINECT_CO['cu0'], KINECT_CO['cv0'] = 966.359, 548.038
+KINECT_CO['dfx'], KINECT_CO['dfy'] = 388.198, 389.033  # (mm)
+KINECT_CO['du0'], KINECT_CO['dv0'] = 253.270, 213.934
+KINECT_CO['k1'], KINECT_CO['k2'], KINECT_CO['k3'] = 0.108, -0.125, 0.062
+KINECT_CO['p1'], KINECT_CO['p2'] = -0.001, -0.003
+co = KINECT_CO
 
 
 def read_joint(path):
@@ -70,8 +79,6 @@ def move_camera_to_front(body_info, body_id):
     x_c = np.cross(y_c, z_c)
 
     # 3d-to-2d projection coefficients
-    co = COEFFICIENTS
-
     for f in range(start_frame):
         body = body_info[f][body_id]["joints"]
         for j in range(len(body)):

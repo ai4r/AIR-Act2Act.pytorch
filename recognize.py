@@ -7,16 +7,14 @@ import random
 import argparse
 from datetime import timedelta
 import cv2
-from utils.openpose import pose_keypoints
 
 from utils.AIR import norm_features, denorm_features
 from utils.draw import Artist
-from utils.kinect import BodyGameRuntime
+
 from user.classifier import load_model, load_test_data, classify, lstm_input_length
 from setting import ACTIONS, LSTM_MODEL_PATH, TEST_PATH, NORM_METHOD, INPUT_DATA_TYPE, B_HANDS
 from setting import W_VIDEO, H_VIDEO
 from preprocess import MAX_DISTANCE
-
 
 # gather all existing models
 model_files = glob.glob(os.path.join(LSTM_MODEL_PATH, "*.pth"))
@@ -24,6 +22,10 @@ model_numbers = list()
 for model_file in model_files:
     model_name, _ = os.path.splitext(os.path.basename(model_file))
     model_numbers.append(int(model_name[6:10]))
+
+# dynamic import
+openpose_module = None
+kinect_module = None
 
 
 # argument parser
@@ -42,11 +44,23 @@ def main():
         for _ in test_with_data(model):
             pass
     if args.mode == "kinect":
+        load_kinect_module()
         for _ in test_with_kinect(model):
             pass
     if args.mode == 'webcam':
-        for _ in test_with_webcam(model):
+        load_openpose_module()
+        for _ in test_with_webcam(model, b_print=True):
             pass
+
+
+def load_kinect_module():
+    global kinect_module
+    kinect_module = __import__('utils.kinect', fromlist=['BodyGameRuntime'], level=0)
+
+
+def load_openpose_module():
+    global openpose_module
+    openpose_module = __import__('utils.openpose', fromlist=['pose_keypoints'], level=0)
 
 
 def test_with_data(model):
@@ -70,7 +84,7 @@ def test_with_data(model):
         print(os.path.normpath(test_file))
 
         if os.path.exists(test_file):
-            test_dataset = load_test_data(data_name=test_file)
+            test_dataset, _ = load_test_data(data_name=test_file)
             human_data = test_dataset.human_data[0]
             for f, human in enumerate(human_data[:test_dataset.dim_input[0]]):
                 features = denorm_features(human, NORM_METHOD, INPUT_DATA_TYPE, B_HANDS)
@@ -78,7 +92,8 @@ def test_with_data(model):
                 yield None, None
             for idx, inputs in enumerate(test_dataset.inputs):
                 behaviors, behavior_names = classify(model, [inputs])
-                cur_features = denorm_features(inputs[-1][1:], NORM_METHOD, INPUT_DATA_TYPE, B_HANDS)
+                start_index = 1 if INPUT_DATA_TYPE == '3D' else 0
+                cur_features = denorm_features(inputs[-1][start_index:], NORM_METHOD, INPUT_DATA_TYPE, B_HANDS)
                 f += 1
                 artist.update([cur_features], [behavior_names[0]], [f"{f}/{len(human_data)}"], fps=10)
                 yield None, behaviors[0]
@@ -87,7 +102,7 @@ def test_with_data(model):
 
 
 def test_with_kinect(model):
-    game = BodyGameRuntime()
+    game = kinect_module.BodyGameRuntime()
     last = time.time()
     first = True
     inputs = list()
@@ -185,7 +200,7 @@ def time_to_string(sec):
     return f"0{time_str[:-4]}"
 
 
-def test_with_webcam(model):
+def test_with_webcam(model, b_print=False):
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, W_VIDEO)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H_VIDEO)
@@ -195,11 +210,12 @@ def test_with_webcam(model):
 
     while True:
         if time.time() - last > 0.1:
+            # print(time.time() - last)
             last = time.time()
 
             # 2d skeleton from video
             ret, frame = cap.read()
-            key_points, output_data = pose_keypoints(frame)
+            key_points, output_data = openpose_module.pose_keypoints(frame)
 
             output_data = cv2.flip(output_data, 3)
             cv2.imshow(f'{W_VIDEO}x{H_VIDEO}', output_data)
@@ -224,7 +240,8 @@ def test_with_webcam(model):
                 continue
 
             behaviors, behavior_names = classify(model, [inputs])
-            print("user:", behavior_names[0])
+            if b_print:
+                print("user:", behavior_names[0])
             yield body, behaviors[0]
 
 

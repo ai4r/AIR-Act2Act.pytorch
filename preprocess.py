@@ -6,25 +6,46 @@ import numpy as np
 from tqdm import tqdm
 
 from utils.AIR import read_joint, vectorize3D, move_camera_to_front
-from setting import PROB_TRAIN, DEVIDE, DATA_PATH, TRAIN_PATH, TEST_PATH
+from setting import ACTIONS
 
-JOINT_PATH = './joint files/'
+# parameters
+PROB_TRAIN = .9
+DEVIDE = 'scene'  # {scene, subject}
 MAX_DISTANCE = 5.  # maximum distance between camera and human
+B_OVERWRITE = False
+
+# paths
+PATH = os.path.abspath(os.path.dirname(__file__))
+JOINT_PATH = os.path.join(PATH, r'joint files')
+DATA_ROOT_PATH = os.path.join(PATH, r'data files')
+DATA_PATH = os.path.join(DATA_ROOT_PATH, str(PROB_TRAIN), DEVIDE)
+TRAIN_PATH = os.path.join(DATA_PATH, 'train data')
+TEST_PATH = os.path.join(DATA_PATH, 'valid data')
 
 
 def gen_datafiles():
-    human_files = glob.glob(os.path.normpath(os.path.join(JOINT_PATH, "C001*.joint")))
+    human_files = list()
+    for action in ACTIONS:
+        human_files.extend(glob.glob(os.path.normpath(os.path.join(JOINT_PATH, f"C001*{action}*.joint"))))
     human_files.sort()
     n_data = len(human_files)
 
     pbar = tqdm(total=n_data)
     for human_file in human_files:
+        # skip if .npz file already exists
+        data_name = human_file.replace("\\", "/").split("/")[-1].split('.')[0]
+        data_file = os.path.join(DATA_ROOT_PATH, f"{data_name[4:]}.npz")
+        if os.path.exists(data_file) and not B_OVERWRITE:
+            pbar.update(1)
+            continue
+
+        # skip if robot and third view files not exist
         robot_file = human_file.replace('C001', 'C002')
         third_file = human_file.replace('C001', 'C003')
-
         if not os.path.exists(robot_file) or not os.path.exists(third_file):
             continue
 
+        # read files
         human_info = read_joint(human_file)
         robot_info = read_joint(robot_file)
         third_info = read_joint(third_file)
@@ -66,8 +87,6 @@ def gen_datafiles():
             extracted_human_info.append(human_info[f][1]["joints"])
             extracted_robot_info.append(robot_info[f][0]["joints"])
 
-        data_name = human_file.replace("\\", "/").split("/")[-1].split('.')[0]
-        data_file = os.path.join(DATA_PATH, f"{data_name[4:]}.npz")
         np.savez(data_file,
                  human_info=extracted_human_info,
                  robot_info=extracted_robot_info,
@@ -81,13 +100,13 @@ def gen_datafiles():
 def split_train_valid():
     reset_train = glob.glob(os.path.join(TRAIN_PATH, "*.npz"))
     for file in reset_train:
-        shutil.move(file, os.path.join(DATA_PATH, os.path.basename(file)))
+        shutil.move(file, os.path.join(DATA_ROOT_PATH, os.path.basename(file)))
     reset_valid = glob.glob(os.path.join(TEST_PATH, "*.npz"))
     for file in reset_valid:
-        shutil.move(file, os.path.join(DATA_PATH, os.path.basename(file)))
+        shutil.move(file, os.path.join(DATA_ROOT_PATH, os.path.basename(file)))
 
     action_names = list()
-    files = glob.glob(os.path.join(DATA_PATH, "*.npz"))
+    files = glob.glob(os.path.join(DATA_ROOT_PATH, "*.npz"))
     for file in files:
         file_name = os.path.basename(file)
         action_name = file_name[4:8]
@@ -97,7 +116,7 @@ def split_train_valid():
     train = list()
     for action_name in action_names:
         data_names = list()
-        action_files = glob.glob(os.path.join(DATA_PATH, f"*{action_name}*.npz"))
+        action_files = glob.glob(os.path.join(DATA_ROOT_PATH, f"*{action_name}*.npz"))
         for action_file in action_files:
             file_name = os.path.basename(action_file)
             data_name = file_name[:4] if DEVIDE == 'subject' else file_name[:8]

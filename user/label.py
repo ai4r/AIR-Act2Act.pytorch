@@ -8,18 +8,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils.AIR import norm_features
 from utils.kcluster import load_proper_model, SEQ_LENGTH
 from user.constants import ALL_SUBACTION_NAMES, KINECT_FRAME_RATE, TARGET_FRAME_RATE
-from setting import gen_sequence, TRAIN_PATH, TEST_PATH, NORM_METHOD
+from setting import gen_sequence, TRAIN_PATH, TEST_PATH, NORM_METHOD, ACTIONS
 
-# action list to test
-# actions = ["A001", "A004", "A005", "A007", "A008"]
-actions = ["A001", "A003", "A004", "A005", "A006", "A008"]
-# actions = ["A005"]
-# actions = ['A001', 'A004', 'A005', 'A007', 'A008']
-# actions = ["A008"]
 
 # get all data files
 data_files = list()
-for action in actions:
+for action in ACTIONS:
     data_files.extend(glob.glob(os.path.join( TEST_PATH, F"*{action}*.npz")))
     data_files.extend(glob.glob(os.path.join(TRAIN_PATH, F"*{action}*.npz")))
 data_files.sort()
